@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+.venv/
+
+# Builds
+.next/
+out/
+dist/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Env & secrets
+.env
+.env.local
+.env*.local
+runtime/.env
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+
+# Next.js agent file is committed (keeps the tree clean per AGENTS.md)
+
+# QA artifacts
+.playwright-mcp/
+
+# QA artifacts.playwright-mcp/
