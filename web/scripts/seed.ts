@@ -1,4 +1,8 @@
-import "dotenv/config";
+import { config } from "dotenv";
+// tsx runs outside Next.js — load the same env files the app uses.
+config({ path: ".env.local" });
+config({ path: ".env" });
+
 import { Pool } from "pg";
 import { offerings } from "../lib/content/offerings";
 

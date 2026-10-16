@@ -2,7 +2,7 @@
  * Central site identity. Rename the product by editing this file only.
  */
 export const site = {
-  name: "Showcase",
+  name: "Legible",
   tagline: "Independent AI engineering",
   /** Launch year — the footer is prerendered, so no runtime Date is allowed. */
   foundedYear: 2026,

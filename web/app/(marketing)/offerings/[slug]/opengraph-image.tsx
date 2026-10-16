@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { site } from "@/lib/site";
 import { getOffering } from "@/lib/data/offerings";
 
 export const alt = "Offering preview";
@@ -28,7 +29,7 @@ export default async function OfferingOgImage({
       >
         <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
           <span style={{ fontSize: 32, fontWeight: 700, color: "#191a18" }}>
-            Showcase
+            {site.name}
           </span>
           <span style={{ fontSize: 26, color: "#3547c8" }}>/ai</span>
           <span
