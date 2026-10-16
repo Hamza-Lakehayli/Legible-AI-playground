@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { DesktopNav, MobileNav } from "@/components/marketing/nav";
-import { ButtonLink } from "@/components/ui/button";
+import { AccountIsland } from "@/components/marketing/account-island";
 import { Container } from "@/components/ui/layout";
 import { site } from "@/lib/site";
 
@@ -21,12 +21,7 @@ export function SiteHeader() {
           <DesktopNav />
 
           <div className="hidden items-center gap-2 md:flex">
-            <ButtonLink href="/login" variant="ghost" size="sm">
-              Log in
-            </ButtonLink>
-            <ButtonLink href="/playground" size="sm">
-              Open playground
-            </ButtonLink>
+            <AccountIsland />
           </div>
 
           <MobileNav />

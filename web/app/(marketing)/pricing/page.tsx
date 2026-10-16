@@ -5,6 +5,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Container, Section } from "@/components/ui/layout";
 import { getSession } from "@/lib/session";
+import { getEntitlements } from "@/lib/entitlements";
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -148,11 +149,18 @@ export default function PricingPage() {
 
 async function CurrentPlanNote() {
   const session = await getSession();
+  if (session?.user?.workspaceId) {
+    const entitlements = await getEntitlements(session.user.workspaceId);
+    return (
+      <p className="rounded-control border border-line bg-surface px-3 py-1.5 font-mono text-xs text-muted">
+        current plan: {entitlements.plan} — {entitlements.runsPerDay} runs/day,
+        managed in the dashboard
+      </p>
+    );
+  }
   return (
     <p className="rounded-control border border-line bg-surface px-3 py-1.5 font-mono text-xs text-muted">
-      {session
-        ? `current plan: ${session.plan} — managed in the dashboard`
-        : "signed out — guest limits apply until you register"}
+      signed out — guest limits apply until you register
     </p>
   );
 }

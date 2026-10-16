@@ -1,17 +1,25 @@
 import "server-only";
+import { redirect } from "next/navigation";
+import { connection } from "next/server";
+import { auth } from "@/lib/auth";
 
 /**
- * Session placeholder for milestone M2 (Auth.js). Until then every
- * visitor is a guest, so the pricing island renders without a session.
- * M2 replaces this with Auth.js — it must stay async and must read
- * cookies() so the pricing page keeps its dynamic island inside Suspense.
+ * Session helpers. Anything calling these is request-time only — keep
+ * them inside Suspense on marketing pages, and call freely in protected
+ * routes (dashboard is dynamic by design). connection() marks the call
+ * site request-dependent BEFORE auth() runs, since Auth.js touches
+ * crypto randomness that unstable-value checks would otherwise trip on
+ * (instant=false does not clear those — only moving behind connection()
+ * does).
  */
-export type Session = {
-  userId: string;
-  workspaceId: string;
-  plan: "free" | "pro";
-} | null;
+export async function getSession() {
+  return auth();
+}
 
-export async function getSession(): Promise<Session> {
-  return null;
+/** For protected routes: redirects guests to /login instead of erroring. */
+export async function requireSession() {
+  await connection();
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  return session;
 }

@@ -8,6 +8,13 @@
       "when": 1792164518371,
       "tag": "0000_good_switch",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792190701724,
+      "tag": "0001_robust_black_cat",
+      "breakpoints": true
     }
   ]
 }

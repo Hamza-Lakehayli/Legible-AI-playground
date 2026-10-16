@@ -43,7 +43,7 @@ export const subscriptions = web.table("subscriptions", {
   workspaceId: uuid("workspace_id")
     .notNull()
     .references(() => workspaces.id, { onDelete: "cascade" }),
-  polarSubscriptionId: text("polar_subscription_id").notNull(),
+  polarSubscriptionId: text("polar_subscription_id"),
   plan: text("plan").notNull().default("free"),
   status: text("status").notNull().default("inactive"),
   currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),

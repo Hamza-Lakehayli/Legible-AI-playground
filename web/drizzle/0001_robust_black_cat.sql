@@ -1,0 +1,1 @@
+ALTER TABLE "web"."subscriptions" ALTER COLUMN "polar_subscription_id" DROP NOT NULL;
