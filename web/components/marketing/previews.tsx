@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { ConsolePanel } from "@/components/console/panel";
 import { cn } from "@/lib/utils";
 import {
   ArrowRight,
@@ -12,6 +13,7 @@ import {
 /**
  * Small, honest interface mockups used across offering pages and the home
  * page. All static, all labelled as previews — never fake "live" states.
+ * Light-theme panels built on the shared console frame.
  */
 
 function PanelFrame({
@@ -26,18 +28,14 @@ function PanelFrame({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        "overflow-hidden rounded-panel border border-line bg-surface",
-        className,
-      )}
+    <ConsolePanel
+      title={title}
+      right={right}
+      surface="surface"
+      className={className}
     >
-      <div className="flex h-10 items-center justify-between border-b border-line px-4">
-        <p className="font-mono text-xs text-muted">{title}</p>
-        {right}
-      </div>
       {children}
-    </div>
+    </ConsolePanel>
   );
 }
 

@@ -5,7 +5,7 @@ import { Capabilities, Architecture, ClosingCta, Principles } from "@/components
 import { ConsolePreview } from "@/components/marketing/console-preview";
 import { OfferingPreview } from "@/components/marketing/previews";
 import { ButtonLink } from "@/components/ui/button";
-import { Container, Section, SectionHeader } from "@/components/ui/layout";
+import { Container, Eyebrow, Section, SectionHeader } from "@/components/ui/layout";
 import { getOfferings, type Offering } from "@/lib/data/offerings";
 
 export const metadata: Metadata = {
@@ -25,9 +25,7 @@ export default async function HomePage() {
         <Container>
           <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_440px]">
             <div>
-              <p className="font-mono text-xs font-medium tracking-[0.14em] text-accent-ink uppercase">
-                Independent AI engineering
-              </p>
+              <Eyebrow>Independent AI engineering</Eyebrow>
               <h1 className="mt-4 text-4xl font-semibold tracking-tight text-balance sm:text-5xl md:text-6xl">
                 AI systems you can inspect, test, and trust.
               </h1>
@@ -141,9 +139,7 @@ export default async function HomePage() {
 function WideCopy({ offering }: { offering: Offering }) {
   return (
     <div>
-      <p className="font-mono text-xs font-medium tracking-[0.14em] text-accent-ink uppercase">
-        {offering.kindLabel}
-      </p>
+      <Eyebrow>{offering.kindLabel}</Eyebrow>
       <h3 className="mt-3 text-2xl font-semibold tracking-tight md:text-3xl">
         {offering.headline}
       </h3>
@@ -179,9 +175,7 @@ function WideCopy({ offering }: { offering: Offering }) {
 function SplitCopy({ offering }: { offering: Offering }) {
   return (
     <div>
-      <p className="font-mono text-xs font-medium tracking-[0.14em] text-accent-ink uppercase">
-        {offering.kindLabel}
-      </p>
+      <Eyebrow>{offering.kindLabel}</Eyebrow>
       <h3 className="mt-3 text-2xl font-semibold tracking-tight">{offering.headline}</h3>
       <p className="mt-4 text-base/7 text-muted">{offering.summary}</p>
       <Link

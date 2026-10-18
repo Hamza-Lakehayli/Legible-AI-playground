@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { registerUser } from "@/actions/auth";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export function RegisterForm() {
   const router = useRouter();
@@ -61,7 +62,7 @@ export function RegisterForm() {
         <label htmlFor="email" className="text-sm font-medium text-ink">
           Email
         </label>
-        <input
+        <Input
           id="email"
           name="email"
           type="email"
@@ -71,7 +72,7 @@ export function RegisterForm() {
           onChange={(e) => setEmail(e.target.value)}
           aria-invalid={fieldError === "email" || undefined}
           aria-describedby={fieldError === "email" ? "email-error" : undefined}
-          className="mt-1.5 h-10 w-full rounded-control border border-line bg-surface px-3 text-sm focus:border-accent focus:outline-2 focus:-outline-offset-2 focus:outline-accent"
+          className="mt-1.5"
         />
       </div>
 
@@ -80,7 +81,7 @@ export function RegisterForm() {
           Password
         </label>
         <div className="relative mt-1.5">
-          <input
+          <Input
             id="password"
             name="password"
             type={showPassword ? "text" : "password"}
@@ -91,7 +92,7 @@ export function RegisterForm() {
             onChange={(e) => setPassword(e.target.value)}
             aria-invalid={fieldError === "password" || undefined}
             aria-describedby={fieldError === "password" ? "password-error" : "password-hint"}
-            className="h-10 w-full rounded-control border border-line bg-surface px-3 pr-10 text-sm focus:border-accent focus:outline-2 focus:-outline-offset-2 focus:outline-accent"
+            className="pr-10"
           />
           <button
             type="button"

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { ButtonLink } from "@/components/ui/button";
-import { Container, Section } from "@/components/ui/layout";
+import { Container, Eyebrow, Section } from "@/components/ui/layout";
 
 export const metadata: Metadata = {
   title: "About",
@@ -13,9 +13,7 @@ export default function AboutPage() {
   return (
     <Section>
       <Container className="max-w-3xl">
-        <p className="font-mono text-xs font-medium tracking-[0.14em] text-accent-ink uppercase">
-          About
-        </p>
+        <Eyebrow>About</Eyebrow>
         <h1 className="mt-3 text-4xl font-semibold tracking-tight text-balance md:text-5xl">
           Engineering shown as engineering.
         </h1>

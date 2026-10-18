@@ -1,6 +1,8 @@
 import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
+export type BadgeVariant = "neutral" | "accent" | "success" | "warning" | "danger";
+
 /**
  * Compact rectangular label with slight corner rounding — never a pill
  * (brief §5). Semantic variants are for execution and risk states only.
@@ -10,7 +12,7 @@ export function Badge({
   className,
   ...props
 }: HTMLAttributes<HTMLSpanElement> & {
-  variant?: "neutral" | "accent" | "success" | "warning" | "danger";
+  variant?: BadgeVariant;
 }) {
   return (
     <span

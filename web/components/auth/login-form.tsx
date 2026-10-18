@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 /**
  * Narrow, quiet auth form (brief §9): visible labels, error near the
@@ -56,7 +57,7 @@ export function LoginForm() {
         <label htmlFor="email" className="text-sm font-medium text-ink">
           Email
         </label>
-        <input
+        <Input
           id="email"
           name="email"
           type="email"
@@ -64,7 +65,7 @@ export function LoginForm() {
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="mt-1.5 h-10 w-full rounded-control border border-line bg-surface px-3 text-sm focus:border-accent focus:outline-2 focus:-outline-offset-2 focus:outline-accent"
+          className="mt-1.5"
         />
       </div>
 
@@ -73,7 +74,7 @@ export function LoginForm() {
           Password
         </label>
         <div className="relative mt-1.5">
-          <input
+          <Input
             id="password"
             name="password"
             type={showPassword ? "text" : "password"}
@@ -81,7 +82,7 @@ export function LoginForm() {
             autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="h-10 w-full rounded-control border border-line bg-surface px-3 pr-10 text-sm focus:border-accent focus:outline-2 focus:-outline-offset-2 focus:outline-accent"
+            className="pr-10"
           />
           <button
             type="button"

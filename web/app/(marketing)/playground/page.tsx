@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
-import { Container, Section } from "@/components/ui/layout";
+import { Container, Eyebrow, Section } from "@/components/ui/layout";
 
 export const metadata: Metadata = {
   title: "Playground",
@@ -24,9 +24,7 @@ export default function PlaygroundPage() {
     <Section>
       <Container>
         <div className="max-w-2xl">
-          <p className="font-mono text-xs font-medium tracking-[0.14em] text-accent-ink uppercase">
-            Playground
-          </p>
+          <Eyebrow>Playground</Eyebrow>
           <h1 className="mt-3 text-4xl font-semibold tracking-tight text-balance md:text-5xl">
             Run the work, not a video.
           </h1>

@@ -16,14 +16,15 @@ export function buttonVariants({
   className?: string;
 } = {}): string {
   return cn(
-    "inline-flex select-none items-center justify-center gap-2 rounded-control font-medium transition-colors",
+    "inline-flex select-none items-center justify-center gap-2 rounded-control font-medium transition-colors duration-150",
     "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
     "disabled:pointer-events-none disabled:opacity-50",
     size === "sm" ? "h-8 px-3 text-[13px]" : "h-10 px-4 text-sm",
-    variant === "primary" && "bg-accent text-white hover:bg-accent-hover",
+    variant === "primary" &&
+      "bg-accent text-white hover:bg-accent-hover active:bg-accent-ink",
     variant === "secondary" &&
-      "border border-line bg-surface text-ink hover:border-muted hover:bg-surface-muted",
-    variant === "ghost" && "text-ink hover:bg-surface-muted",
+      "border border-line bg-surface text-ink hover:border-muted hover:bg-surface-muted active:bg-line/50",
+    variant === "ghost" && "text-ink hover:bg-surface-muted active:bg-surface-muted",
     className,
   );
 }

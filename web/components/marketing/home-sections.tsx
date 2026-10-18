@@ -16,15 +16,17 @@ export function Capabilities() {
   return (
     <div className="border-y border-line bg-surface">
       <Container>
-        <ul className="grid grid-cols-2 gap-x-6 sm:grid-cols-3 lg:grid-cols-5">
+        <ul className="grid grid-cols-2 gap-x-8 gap-y-8 sm:grid-cols-3 lg:grid-cols-5 lg:gap-y-0">
           {items.map((item, i) => (
             <li
               key={item.name}
-              className={`py-6 lg:py-8 ${i > 0 ? "lg:border-l lg:border-line lg:pl-6" : ""}`}
+              className={`py-6 lg:py-8 ${
+                i > 0 ? "lg:border-l lg:border-line lg:pl-6" : ""
+              }`}
             >
               <item.icon className="size-4 text-accent" aria-hidden />
               <p className="mt-2 text-sm font-medium text-ink">{item.name}</p>
-              <p className="mt-0.5 text-[13px]/5 text-muted">{item.detail}</p>
+              <p className="mt-1 text-[13px]/5 text-muted">{item.detail}</p>
             </li>
           ))}
         </ul>

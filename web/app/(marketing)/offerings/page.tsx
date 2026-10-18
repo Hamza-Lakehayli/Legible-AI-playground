@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { Container, Section } from "@/components/ui/layout";
+import { Container, Eyebrow, Section } from "@/components/ui/layout";
 import { getOfferings } from "@/lib/data/offerings";
 
 export const metadata: Metadata = {
@@ -18,9 +18,7 @@ export default async function OfferingsPage() {
     <Section>
       <Container>
         <div className="max-w-2xl">
-          <p className="font-mono text-xs font-medium tracking-[0.14em] text-accent-ink uppercase">
-            Work / Offerings
-          </p>
+          <Eyebrow>Work / Offerings</Eyebrow>
           <h1 className="mt-3 text-4xl font-semibold tracking-tight text-balance md:text-5xl">
             Everything here runs. That is the point.
           </h1>

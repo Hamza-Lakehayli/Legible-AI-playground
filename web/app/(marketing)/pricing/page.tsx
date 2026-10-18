@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { ShieldCheck } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Container, Section } from "@/components/ui/layout";
+import { Container, Eyebrow, Section } from "@/components/ui/layout";
 import { getSession } from "@/lib/session";
 import { getEntitlements } from "@/lib/entitlements";
 
@@ -56,9 +56,7 @@ export default function PricingPage() {
     <Section>
       <Container>
         <div className="max-w-2xl">
-          <p className="font-mono text-xs font-medium tracking-[0.14em] text-accent-ink uppercase">
-            Pricing
-          </p>
+          <Eyebrow>Pricing</Eyebrow>
           <h1 className="mt-3 text-4xl font-semibold tracking-tight text-balance md:text-5xl">
             Concrete limits, not vibes.
           </h1>
