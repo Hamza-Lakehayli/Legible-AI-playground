@@ -8,7 +8,9 @@ token's workspace.
 """
 
 import base64
+import binascii
 import json
+import math
 import time
 
 from cryptography.exceptions import InvalidSignature
@@ -33,10 +35,16 @@ def verify_token(token: str, public_key_b64: str | None) -> dict:
         public_key = Ed25519PublicKey.from_public_bytes(_b64decode(public_key_b64))
         public_key.verify(_b64decode(sig_b64), _b64decode(payload_b64))
         claims = json.loads(_b64decode(payload_b64))
-    except (ValueError, InvalidSignature, json.JSONDecodeError):
+    except (ValueError, TypeError, binascii.Error, InvalidSignature, json.JSONDecodeError):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid token")
 
-    if float(claims.get("exp", 0)) < time.time():
+    if not isinstance(claims, dict):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid token claims")
+    try:
+        expires_at = float(claims.get("exp", 0))
+    except (TypeError, ValueError):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid token expiry")
+    if not math.isfinite(expires_at) or expires_at < time.time():
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "token expired")
 
     return claims
