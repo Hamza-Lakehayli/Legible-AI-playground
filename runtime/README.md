@@ -55,3 +55,20 @@ produces explicit errors rather than a simulated live response.
 ```bash
 .venv\Scripts\python migrate.py    # applies migrations/*.sql, needs DATABASE_URL
 ```
+## Model-request resilience
+
+`MODEL_REQUEST_BUDGET_SECONDS` defaults to 60 and bounds the combined wall time
+of a primary request and at most one fallback attempt. Requests are cancelled on
+expiry; tool execution is never retried by this mechanism. Human approval waits
+are outside this request budget (existing run/approval limits still apply).
+
+`FALLBACK_MODEL` is optional and unset by default. Configure only a model supporting
+the same tools; a smaller model may behave differently. Only 429, 5xx, network
+errors and request timeouts are eligible, and only with budget remaining. Trace
+events record attempted models, safe failure reasons and the serving model.
+
+The web run dock checks `/healthz` before minting a token. An unreachable service
+may be offline, misconfigured, or cold-starting; the UI does not guess which.
+Manual connection retries do not create runs. If a run-creation response is lost,
+check Dashboard → Runs before starting again; automatic creation retries are
+deliberately disabled to avoid duplicate side effects.

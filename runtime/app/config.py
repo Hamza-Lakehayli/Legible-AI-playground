@@ -1,6 +1,7 @@
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field
 
 
 class Settings(BaseSettings):
@@ -16,6 +17,7 @@ class Settings(BaseSettings):
     nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
     nvidia_model: str = "meta/llama-3.3-70b-instruct"
     fallback_model: str | None = None
+    model_request_budget_seconds: float = Field(default=60, gt=0, le=600)
 
     redis_url: str | None = None
     allowed_origin: str = "http://localhost:3000"

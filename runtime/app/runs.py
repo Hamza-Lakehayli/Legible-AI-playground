@@ -159,19 +159,27 @@ async def recover_interrupted_runs() -> None:
                     )
 
 
+def _failure_payload(exc: Exception) -> dict:
+    from .model_requests import ModelRequestError
+
+    if isinstance(exc, ModelRequestError):
+        return {"code": "model_error", "message": str(exc), "attempts": exc.attempts}
+    return {"code": "runtime_error", "message": "The run could not be completed."}
+
+
 async def _run_worker(run_id: str, task_input: str) -> None:
     try:
         await _set_status(run_id, "running")
         await execute_governed_agent(run_id, task_input, _emit, _set_status)
     except asyncio.CancelledError:
         raise
-    except Exception:
+    except Exception as exc:
         logger.exception("Governed-agent run failed: %s", run_id)
         try:
             await _emit(
                 run_id,
                 "run.failed",
-                {"code": "runtime_error", "message": "The run could not be completed."},
+                _failure_payload(exc),
             )
             await _set_status(run_id, "failed", finished=True)
         except Exception:
@@ -196,13 +204,13 @@ async def _run_builder_worker(run_id: str, body: StartRunBody) -> None:
             await execute_agent_spec(run_id, body.input, body.spec, _emit, _set_status)
     except asyncio.CancelledError:
         raise
-    except Exception:
+    except Exception as exc:
         logger.exception("Builder run failed: %s", run_id)
         try:
             await _emit(
                 run_id,
                 "run.failed",
-                {"code": "runtime_error", "message": "The run could not be completed."},
+                _failure_payload(exc),
             )
             await _set_status(run_id, "failed", finished=True)
         except Exception:

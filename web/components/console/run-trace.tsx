@@ -22,6 +22,7 @@ type EventStyle = {
 };
 
 const eventStyles: Record<string, EventStyle> = {
+  "model.completed": { icon: CircleCheck, tone: "muted", label: "Model answered" },
   "run.started": { icon: Play, tone: "accent", label: "Run started" },
   "message.delta": { icon: MessageSquare, tone: "muted", label: "Agent message" },
   "tool.requested": { icon: Wrench, tone: "ink", label: "Tool requested" },
@@ -47,6 +48,11 @@ function nodeLabel(event: RunEvent): string | null {
 
 export function eventDetail(event: RunEvent): string {
   const { payload } = event;
+  if (event.type === "model.completed") {
+    const attempts = payload.attempts as { model: string; error?: string }[] | undefined;
+    const failures = attempts?.filter((attempt) => attempt.error) ?? [];
+    return `${String(payload.model)}${failures.length ? ` · fallback after ${failures.map((attempt) => `${attempt.model}: ${attempt.error}`).join(", ")}` : ""}`;
+  }
   if (event.type === "message.delta") return clip(String(payload.text ?? ""));
   if (event.type === "tool.requested") {
     return `${String(payload.tool)} ${JSON.stringify(payload.arguments)}`;

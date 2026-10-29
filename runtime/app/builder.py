@@ -188,7 +188,6 @@ async def execute_agent_spec(
             finalize=True,
         )
     except TimeLimitExceeded:
-        await set_status(run_id, "failed", finished=True)
         await emit(
             run_id,
             "run.failed",
@@ -197,6 +196,7 @@ async def execute_agent_spec(
                 "message": "The run exceeded its execution time limit.",
             },
         )
+        await set_status(run_id, "failed", finished=True)
 
 
 def _render_template(template: str, state: dict[str, str]) -> str:
@@ -303,6 +303,8 @@ async def execute_workflow(
                 result = await _request_completion(
                     [{"role": "user", "content": prompt}], tools=False
                 )
+                if result.get("_trace"):
+                    await emit(run_id, "model.completed", {**result["_trace"], "node": ref})
                 message = result["choices"][0].get("message") or {}
                 content = message.get("content")
                 if not isinstance(content, str) or not content.strip():
@@ -405,7 +407,6 @@ async def execute_workflow(
 
     except ToolRejected as exc:
         final_status = "failed" if exc.decision == "rejected" else "expired"
-        await set_status(run_id, final_status, finished=True)
         await emit(
             run_id,
             "run.failed" if exc.decision == "rejected" else "run.expired",
@@ -414,24 +415,31 @@ async def execute_workflow(
                 "message": "The requested action was not executed.",
             },
         )
+        await set_status(run_id, final_status, finished=True)
     except TimeLimitExceeded as exc:
-        await set_status(run_id, "failed", finished=True)
         await emit(
             run_id,
             "run.failed",
             {"code": "step_limit", "message": str(exc)},
         )
-    except Exception as exc:  # surfaced in the trace, never swallowed
-        logger.exception("Workflow run failed: %s", run_id)
         await set_status(run_id, "failed", finished=True)
+    except Exception as exc:  # surfaced in the trace, never swallowed
+        from .model_requests import ModelRequestError
+
+        logger.exception("Workflow run failed: %s", run_id)
         await emit(
             run_id,
             "run.failed",
             {
                 "code": "node_error",
-                "message": str(exc) or "The workflow node failed.",
+                "message": str(exc) if isinstance(exc, ModelRequestError) else "The workflow node failed.",
+                "node": _node_ref(current) if current else None,
+                "attempts": exc.attempts if isinstance(exc, ModelRequestError) else [],
             },
         )
+        # Persist the terminal event before exposing terminal status: otherwise
+        # an SSE reader can observe 'failed' and close before this event exists.
+        await set_status(run_id, "failed", finished=True)
 
 
 async def _invoke_tool_node(

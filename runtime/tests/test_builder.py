@@ -79,6 +79,116 @@ def _edge(source, target, label=None):
     }
 
 
+def test_model_deadline_failure_is_terminal_and_node_attributed(monkeypatch):
+    from app.model_requests import ModelRequestError
+
+    pool = _Pool()
+    run_id, workspace_id = f"run_{uuid4().hex}", str(uuid4())
+    _seed_run(pool, run_id, workspace_id)
+    _patch_pool(monkeypatch, pool)
+    emitted = []
+
+    async def fail(*args, **kwargs):
+        raise ModelRequestError("Model request exceeded its 60s budget.", [{"model": "primary", "error": "deadline exceeded"}])
+
+    async def emit(rid, kind, payload):
+        if kind == "run.failed":
+            assert pool.connection.runs[rid]["status"] != "failed", "Terminal status must not close SSE before the failure event"
+        emitted.append((kind, payload))
+
+    async def status(rid, value, **kwargs):
+        pool.connection.runs[rid]["status"] = value
+
+    monkeypatch.setattr(builder, "_request_completion", fail)
+    graph = _graph(
+        [_node("start", "start"), _node("llm", "llm", prompt="test"), _node("end", "end")],
+        [_edge("start", "llm"), _edge("llm", "end")],
+    )
+    asyncio.run(builder.execute_workflow(run_id, "test", graph, {}, emit, status))
+    assert pool.connection.runs[run_id]["status"] == "failed"
+    assert emitted[-1][0] == "run.failed"
+    assert emitted[-1][1]["node"]["id"] == "llm"
+    assert "60s budget" in emitted[-1][1]["message"]
+    assert not any(kind == "run.completed" for kind, _ in emitted)
+
+
+def test_workflow_fallback_records_serving_model_and_completes(monkeypatch):
+    import httpx
+    from app import model_requests
+    from app.config import Settings
+
+    pool = _Pool()
+    run_id, workspace_id = f"run_{uuid4().hex}", str(uuid4())
+    _seed_run(pool, run_id, workspace_id)
+    _patch_pool(monkeypatch, pool)
+    emitted, requested = [], []
+    settings = Settings(_env_file=None, nvidia_api_key="test-only", nvidia_model="primary", fallback_model="secondary")
+    monkeypatch.setattr(model_requests, "get_settings", lambda: settings)
+    monkeypatch.setattr(governed_agent, "get_settings", lambda: settings)
+
+    async def handler(request):
+        model = json.loads(request.content)["model"]
+        requested.append(model)
+        if model == "primary":
+            return httpx.Response(429)
+        return httpx.Response(200, json={"choices": [{"message": {"content": "Recovered."}}]})
+
+    client = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient", lambda: client(transport=httpx.MockTransport(handler)))
+
+    async def emit(rid, kind, payload):
+        emitted.append((kind, payload))
+
+    async def status(rid, value, **kwargs):
+        pool.connection.runs[rid]["status"] = value
+
+    graph = _graph(
+        [_node("start", "start"), _node("llm", "llm", prompt="test"), _node("end", "end")],
+        [_edge("start", "llm"), _edge("llm", "end")],
+    )
+    asyncio.run(builder.execute_workflow(run_id, "test", graph, {}, emit, status))
+    assert requested == ["primary", "secondary"]
+    model = next(payload for kind, payload in emitted if kind == "model.completed")
+    assert model["model"] == "secondary"
+    assert model["node"]["id"] == "llm"
+    assert model["attempts"][0]["error"] == "HTTP 429"
+    assert pool.connection.runs[run_id]["status"] == "completed"
+    assert emitted[-1][0] == "run.completed"
+
+
+def test_tool_is_not_replayed_when_following_model_request_fails(monkeypatch):
+    from app.model_requests import ModelRequestError
+
+    pool = _Pool()
+    _patch_pool(monkeypatch, pool)
+    completions, tools = [], []
+
+    async def completion(*args, **kwargs):
+        completions.append(True)
+        if len(completions) == 2:
+            raise ModelRequestError("Model request failed (HTTP 503).", [])
+        return {"choices": [{"message": {"tool_calls": [{
+            "id": "call_1", "function": {"name": "orders_lookup", "arguments": '{"order_id":"4821"}'},
+        }]}}]}
+
+    async def tool(*args, **kwargs):
+        tools.append(True)
+        return {"found": True}
+
+    async def emit(*args):
+        return {}
+
+    monkeypatch.setattr(governed_agent, "_request_completion", completion)
+    monkeypatch.setattr(governed_agent, "_invoke_tool", tool)
+    with pytest.raises(ModelRequestError):
+        asyncio.run(governed_agent._agent_loop(
+            "run_test", [], workspace_id="ws", user_id="user", emit=emit,
+            set_status=_no_op, finalize=False,
+        ))
+    assert len(tools) == 1
+    assert len(completions) == 2
+
+
 def test_agent_spec_run_completes_and_streams(monkeypatch) -> None:
     pool = _Pool()
     token, _ = _setup(monkeypatch, pool)

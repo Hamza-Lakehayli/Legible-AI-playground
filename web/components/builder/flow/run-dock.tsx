@@ -39,7 +39,7 @@ export function RunDock({
   const showTrace = forced || openedManually;
 
   const canRun =
-    issues.length === 0 && !busy && !runActive && runInput.trim().length > 0;
+    issues.length === 0 && !busy && !runActive && session.connection !== "uncertain" && session.connection !== "checking" && runInput.trim().length > 0;
 
   return (
     <section
@@ -94,6 +94,10 @@ export function RunDock({
         ) : null}
 
         {runState ? <RunState state={runState} className="shrink-0" /> : null}
+        {session.connection === "checking" ? <span role="status" className="text-xs text-muted">Checking connection…</span> : null}
+        {session.connection === "unreachable" ? (
+          <Button variant="ghost" size="sm" disabled={busy} onClick={() => void session.retryConnection()}>Retry connection</Button>
+        ) : null}
 
         <Button
           size="sm"

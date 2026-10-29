@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { RunStateKind } from "@/components/console/run-state";
+import { createRunClient, responseError, RunCreationUncertain, type ConnectionState } from "@/lib/run-client";
 
 export type RunEvent = {
   run_id: string;
@@ -18,20 +19,6 @@ export type Approval = {
   risk: string;
   reason: string;
 };
-
-type TokenResponse = {
-  token: string;
-  runtimeUrl: string;
-};
-
-async function responseError(response: Response): Promise<string> {
-  try {
-    const body = (await response.json()) as { error?: string; detail?: string };
-    return body.error ?? body.detail ?? `Request failed (${response.status}).`;
-  } catch {
-    return `Request failed (${response.status}).`;
-  }
-}
 
 /**
  * The run plumbing shared by every builder surface: token issue, SSE reader
@@ -51,6 +38,10 @@ export function useRunSession(
   const [editedArguments, setEditedArguments] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [client] = useState(() => createRunClient());
+  const [connection, setConnection] = useState<ConnectionState>("idle");
+  const startingRef = useRef(false);
+  const uncertainRef = useRef(false);
   const lastEventId = useRef(0);
   const controllerRef = useRef<AbortController | null>(null);
   const bodyRef = useRef(buildBody);
@@ -94,6 +85,7 @@ export function useRunSession(
       sessionStorage.removeItem("legible.activeRun");
     } else if (event.type === "approval.resolved") {
       setApproval(null);
+      if (event.payload.decision === "approved" || event.payload.decision === "edited") setRunState("running");
     }
   }, []);
 
@@ -155,11 +147,21 @@ export function useRunSession(
     [applyEvent],
   );
 
-  const issueToken = useCallback(async (): Promise<TokenResponse> => {
-    const response = await fetch("/api/playground/token", { method: "POST" });
-    if (!response.ok) throw new Error(await responseError(response));
-    return (await response.json()) as TokenResponse;
-  }, []);
+  const issueToken = useCallback(() => client.issueToken(), [client]);
+  const retryConnection = useCallback(async () => {
+    if (uncertainRef.current) return false;
+    setConnection("checking");
+    try {
+      await client.checkConnection(process.env.NEXT_PUBLIC_RUNTIME_URL ?? "");
+      setConnection("reachable");
+      setError(null);
+      return true;
+    } catch {
+      setConnection("unreachable");
+      setError("Cannot reach runtime. Check the runtime service and try again.");
+      return false;
+    }
+  }, [client]);
 
   const watchRun = useCallback(
     async (
@@ -238,23 +240,26 @@ export function useRunSession(
 
   const start = useCallback(
     async (input: string) => {
+      if (startingRef.current || uncertainRef.current || sessionStorage.getItem("legible.activeRun")) return;
+      startingRef.current = true;
+      controllerRef.current?.abort();
+      const controller = new AbortController();
+      controllerRef.current = controller;
       setBusy(true);
       setError(null);
       setEvents([]);
       setApproval(null);
+      setRunId(null);
+      setRunState(null);
       lastEventId.current = 0;
       try {
-        const { token, runtimeUrl } = await issueToken();
-        const response = await fetch(`${runtimeUrl.replace(/\/$/, "")}/runs`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(bodyRef.current(input)),
-        });
-        if (!response.ok) throw new Error(await responseError(response));
-        const result = (await response.json()) as { run_id: string };
+        if (!await retryConnection()) return;
+        if (controller.signal.aborted) return;
+        const auth = await issueToken();
+        if (controller.signal.aborted) return;
+        const { token, runtimeUrl } = auth;
+        const id = await client.createRun(auth, bodyRef.current(input));
+        const result = { run_id: id };
         setRunId(result.run_id);
         setRunState("queued");
         sessionStorage.setItem(
@@ -262,19 +267,22 @@ export function useRunSession(
           JSON.stringify({ runId: result.run_id }),
         );
         setBusy(false);
-        const controller = new AbortController();
-        controllerRef.current = controller;
         await watchRun(result.run_id, token, runtimeUrl, controller.signal);
       } catch (reason) {
+        if (reason instanceof RunCreationUncertain) {
+          uncertainRef.current = true;
+          setConnection("uncertain");
+        }
         if (!(reason instanceof DOMException && reason.name === "AbortError")) {
           setError(reason instanceof Error ? reason.message : "Could not start the run.");
           if (!sessionStorage.getItem("legible.activeRun")) setRunState("failed");
         }
       } finally {
+        startingRef.current = false;
         setBusy(false);
       }
     },
-    [issueToken, watchRun],
+    [client, issueToken, retryConnection, watchRun],
   );
 
   const decideApproval = useCallback(
@@ -327,6 +335,8 @@ export function useRunSession(
     setEditedArguments,
     busy,
     error,
+    connection,
+    retryConnection,
     runActive,
     start,
     decideApproval,

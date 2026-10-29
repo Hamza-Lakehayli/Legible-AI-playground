@@ -14,7 +14,6 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 from uuid import uuid4
 
-import httpx
 from asyncpg import Pool
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
@@ -151,11 +150,9 @@ async def _request_completion(
     tool_schemas: list[dict] | None = None,
     model: str | None = None,
 ) -> dict:
-    settings = get_settings()
-    if not settings.nvidia_api_key:
-        raise RuntimeError("NVIDIA_API_KEY is not configured")
+    from ..model_requests import request_completion
 
-    url = f"{settings.nvidia_base_url.rstrip('/')}/chat/completions"
+    settings = get_settings()
     body: dict[str, Any] = {
         "model": model or settings.nvidia_model,
         "messages": messages,
@@ -166,17 +163,7 @@ async def _request_completion(
         body["tools"] = tool_schemas if tool_schemas is not None else _TOOLS
         body["tool_choice"] = "auto"
 
-    async with httpx.AsyncClient(timeout=60) as client:
-        response = await client.post(
-            url,
-            headers={"Authorization": f"Bearer {settings.nvidia_api_key}"},
-            json=body,
-        )
-        response.raise_for_status()
-        result = response.json()
-    if not isinstance(result.get("choices"), list) or not result["choices"]:
-        raise RuntimeError("Model response did not contain a choice")
-    return result
+    return await request_completion(body)
 
 
 def _attributed(payload: dict, node: dict | None) -> dict:
@@ -281,7 +268,6 @@ async def _pending_approval(
                 node,
             ),
         )
-        await set_status(run_id, "expired", finished=True)
         return "expired", None
 
     async with pool.acquire() as conn:
@@ -337,6 +323,7 @@ async def _invoke_tool(
             raise ToolRejected(decision)
         if decision == "edited":
             arguments = validate_tool_arguments(tool, edited or {})
+        await set_status(run_id, "running")
 
     try:
         result = _execute_mock_tool(tool, arguments)
@@ -397,6 +384,8 @@ async def _agent_loop(
                 tool_schemas=tool_schemas or [],
                 model=model,
             )
+        if result.get("_trace"):
+            await emit(run_id, "model.completed", _attributed(result["_trace"], node))
         choice = result["choices"][0]
         message = choice.get("message") or {}
         usage = result.get("usage") or {}
@@ -491,7 +480,6 @@ async def _agent_loop(
                 if not finalize:
                     raise
                 final_status = "failed" if exc.decision == "rejected" else "expired"
-                await set_status(run_id, final_status, finished=True)
                 await emit(
                     run_id,
                     "run.failed" if exc.decision == "rejected" else "run.expired",
@@ -503,6 +491,7 @@ async def _agent_loop(
                         node,
                     ),
                 )
+                await set_status(run_id, final_status, finished=True)
                 return {
                     "text": "",
                     "tokens_in": tokens_in,
@@ -556,7 +545,6 @@ async def execute_governed_agent(
             set_status=set_status,
         )
     except TimeLimitExceeded:
-        await set_status(run_id, "failed", finished=True)
         await emit(
             run_id,
             "run.failed",
@@ -565,3 +553,4 @@ async def execute_governed_agent(
                 "message": "The run exceeded its execution time limit.",
             },
         )
+        await set_status(run_id, "failed", finished=True)
