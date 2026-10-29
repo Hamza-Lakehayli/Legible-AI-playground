@@ -3,6 +3,40 @@
 Written 2026-10-29, picked tracks: **0 housekeeping → 1 engine hardening → 2 builder depth (B4)**.
 Companion docs: `docs/agent-builder-plan.md` (v2 rework, applied), project spec §Playground.
 
+## Implementation update — 2026-10-29
+
+- Track 0 completed: `1dd24f0` (web builder), `e6d71cd` (runtime), `1dc38c4`
+  (documentation), following `2aebb4b`. User assets remain untouched/untracked.
+- Track 1 implemented: `model_requests.py` owns the shared async deadline and
+  optional single fallback; safe failures and model-attempt attribution reach the
+  trace. Connection checks use the existing `/healthz` endpoint. Tokens are cached
+  in memory with expiry checks. Ambiguous creation failures block further starts
+  in the current session and direct the user to Dashboard → Runs.
+- Track 2 implemented: a capped spec-history mechanism with focus-session text
+  grouping and native input undo; shared per-node validation reasons; keyboard-
+  accessible branch labels; deep-copy duplication (ordinary nodes only); Blank
+  and Refund approval loop templates with confirmation and undoable replacement.
+  Import opens the first workflow after confirmation; library merges still keep
+  existing IDs, and undo restores the canvas (not the additive library merge).
+- Verification: production build and type-check passed; focused browser checks
+  cover held-pointer drag visibility/persistence, history, validation, label edits,
+  template cancellation/restoration, import restoration, and offline retries.
+  A deliberately inverted duplication guard failed its regression test, then was
+  restored. Final unit gates: 58 web tests and 34 runtime tests passing; TypeScript
+  clean; ESLint has no errors (one pre-existing unused-import warning). Mobile
+  390px/reduced-motion rendering and native input undo were checked as well.
+- Live NVIDIA verification: `run_f5373053c20e40e488e02031907324d9` completed through
+  lookup → human-approved mock refund → decision → summary, with 26 trace events,
+  per-step serving-model attribution, and 2145 input / 555 output tokens. Fallback
+  recovery, timeout cancellation, exhaustion, and no tool replay are verified with
+  mocked upstream requests rather than deliberately disrupting NVIDIA.
+- Local verification uses web port 3001 (another process owns 3000), and runtime
+  port 8000 with a process-only CORS override for 3001. No environment-file values
+  were changed or committed.
+
+The sections below preserve the agreed scope; the snapshot describes the state
+before implementation, not the current working tree.
+
 ## Snapshot (as of this writing)
 
 - Playground v2 **applied and verified**: single full-screen builder, live NVIDIA run

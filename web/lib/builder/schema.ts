@@ -163,11 +163,21 @@ export function emptyAgentCard(): AgentCard {
 export function validateWorkflow(
   graph: Pick<WorkflowSpec, "nodes" | "edges">,
 ): string[] {
+  return validateWorkflowDetails(graph).errors;
+}
+
+export function validateWorkflowDetails(
+  graph: Pick<WorkflowSpec, "nodes" | "edges">,
+): { errors: string[]; nodeErrors: Map<string, string[]> } {
   const errors: string[] = [];
+  const nodeErrors = new Map<string, string[]>();
+  const addNodeError = (id: string, message: string) => {
+    errors.push(message);
+    nodeErrors.set(id, [...(nodeErrors.get(id) ?? []), message]);
+  };
   const ids = graph.nodes.map((node) => node.id);
   if (ids.length !== new Set(ids).size) errors.push("Node ids must be unique.");
   const known = new Set(ids);
-  const byId = new Map(graph.nodes.map((node) => [node.id, node]));
 
   const starts = graph.nodes.filter((node) => node.type === "start");
   const ends = graph.nodes.filter((node) => node.type === "end");
@@ -199,7 +209,7 @@ export function validateWorkflow(
     }
     for (const node of graph.nodes) {
       if (!seen.has(node.id)) {
-        errors.push(`Node “${node.label || node.id}” is unreachable from Start.`);
+        addNodeError(node.id, `Node “${node.label || node.id}” is unreachable from Start.`);
       }
     }
   }
@@ -208,16 +218,16 @@ export function validateWorkflow(
     const name = node.label || node.id;
     const branches = outgoing.get(node.id) ?? [];
     if (node.type === "end" && branches.length) {
-      errors.push(`End node “${name}” cannot have outgoing edges.`);
+      addNodeError(node.id, `End node “${name}” cannot have outgoing edges.`);
     }
     if (node.type !== "end" && branches.length === 0) {
-      errors.push(`Node “${name}” has no outgoing edge.`);
+      addNodeError(node.id, `Node “${name}” has no outgoing edge.`);
     }
     if (node.type === "decision") {
-      if (!branches.length) errors.push(`Decision “${name}” needs at least one branch.`);
+      if (!branches.length) addNodeError(node.id, `Decision “${name}” needs at least one branch.`);
       const unlabeled = branches.some((edge) => !(edge.label ?? "").trim());
       if (unlabeled) {
-        errors.push(`Every branch out of “${name}” needs a label.`);
+        addNodeError(node.id, `Every branch out of “${name}” needs a label.`);
       } else if (branches.length) {
         // The walker picks a branch by comparing its label to the configured
         // true/false label; a mismatch would only fail mid-run, so catch it here.
@@ -226,14 +236,14 @@ export function validateWorkflow(
         );
         const trueLabel = String(node.config.trueLabel ?? "yes").trim().toLowerCase();
         if (!labels.has(trueLabel)) {
-          errors.push(`Decision “${name}” has no “${trueLabel}” branch.`);
+          addNodeError(node.id, `Decision “${name}” has no “${trueLabel}” branch.`);
         }
         if (String(node.config.mode ?? "always") !== "always") {
           const falseLabel = String(node.config.falseLabel ?? "no")
             .trim()
             .toLowerCase();
           if (!labels.has(falseLabel) && !labels.has("default")) {
-            errors.push(
+            addNodeError(node.id,
               `Decision “${name}” has no “${falseLabel}” branch (or a “default”).`,
             );
           }
@@ -243,22 +253,20 @@ export function validateWorkflow(
     if (node.type === "agent") {
       const card = node.config.agent;
       if (!card) {
-        errors.push(`Agent node “${name}” needs its config card.`);
+        addNodeError(node.id, `Agent node “${name}” needs its config card.`);
       } else if (!card.systemPrompt.trim()) {
-        errors.push(`Agent node “${name}” needs a system prompt.`);
+        addNodeError(node.id, `Agent node “${name}” needs a system prompt.`);
       }
     }
     if (node.type === "tool" && !node.config.tool) {
-      errors.push(`Tool node “${name}” has no tool selected.`);
+      addNodeError(node.id, `Tool node “${name}” has no tool selected.`);
     }
     if (node.type === "llm" && !(node.config.prompt ?? "").trim()) {
-      errors.push(`LLM node “${name}” needs a prompt.`);
+      addNodeError(node.id, `LLM node “${name}” needs a prompt.`);
     }
   }
 
-  // Keep the map alive for readability in devtools; validation is pure.
-  void byId;
-  return [...new Set(errors)];
+  return { errors: [...new Set(errors)], nodeErrors };
 }
 
 /**

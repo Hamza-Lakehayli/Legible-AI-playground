@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "graphs": [{
+    "id": "wf_import_regression",
+    "name": "Imported regression flow",
+    "createdAt": "2026-10-29T00:00:00.000Z",
+    "updatedAt": "2026-10-29T00:00:00.000Z",
+    "nodes": [
+      { "id": "import_start", "type": "start", "label": "Start", "position": { "x": 320, "y": 0 }, "config": {} },
+      { "id": "import_end", "type": "end", "label": "End", "position": { "x": 320, "y": 200 }, "config": {} }
+    ],
+    "edges": [{ "id": "import_edge", "source": "import_start", "target": "import_end" }]
+  }]
+}

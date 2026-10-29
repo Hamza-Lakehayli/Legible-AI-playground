@@ -1,4 +1,5 @@
 import type { AgentCard, WorkflowSpec } from "./schema";
+import { newId } from "./schema";
 
 const SEEDED_AT = "2026-10-01T00:00:00.000Z";
 
@@ -104,3 +105,17 @@ export const TEMPLATE_WORKFLOW: WorkflowSpec = {
 
 export const DEFAULT_WORKFLOW_INPUT =
   "A customer waited 9 days for order 4821. Check whether it qualifies for a refund, then request a full refund if appropriate.";
+
+export type TemplateId = "blank" | "refund";
+export function createWorkflowTemplate(template: TemplateId): WorkflowSpec {
+  const now = new Date().toISOString();
+  const graph = template === "refund" ? structuredClone(TEMPLATE_WORKFLOW) : {
+    name: "Untitled workflow",
+    nodes: [
+      { id: "node_start", type: "start" as const, label: "Start", position: { x: 320, y: 0 }, config: {} },
+      { id: "node_end", type: "end" as const, label: "End", position: { x: 320, y: 200 }, config: {} },
+    ],
+    edges: [{ id: "edge_start_end", source: "node_start", target: "node_end" }],
+  };
+  return { ...graph, id: newId("wf"), createdAt: now, updatedAt: now };
+}

@@ -28,7 +28,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import Link from "next/link";
-import { ArrowLeft, Download, ListTree, Plus, Save, Upload } from "lucide-react";
+import { ArrowLeft, Download, ListTree, Plus, Save, Upload, Undo2, Redo2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useRunSession } from "@/components/console/use-run-session";
@@ -38,7 +38,7 @@ import {
   emptyAgentCard,
   newId,
   toRuntimeGraph,
-  validateWorkflow,
+  validateWorkflowDetails,
   type AgentCard,
   type NodeConfig,
   type NodeKind,
@@ -46,7 +46,7 @@ import {
   type WorkflowSpec,
   TOOL_EXAMPLE_ARGUMENTS,
 } from "@/lib/builder/schema";
-import { DEFAULT_WORKFLOW_INPUT, TEMPLATE_WORKFLOW } from "@/lib/builder/templates";
+import { createWorkflowTemplate, DEFAULT_WORKFLOW_INPUT, TEMPLATE_WORKFLOW, type TemplateId } from "@/lib/builder/templates";
 import {
   downloadBundle,
   exportBundle,
@@ -63,12 +63,13 @@ import { BuilderEdge, type BuilderEdgeData } from "./flow/edge";
 import { NodePicker } from "./flow/node-picker";
 import { NodeInspector } from "./flow/inspector";
 import { RunDock } from "./flow/run-dock";
+import { useGraphHistory } from "./use-graph-history";
+import { duplicateNode, hasMeaningfulWork } from "@/lib/builder/editing";
 
 type FlowNode = Node<BuilderNodeData>;
 type FlowEdge = Edge<BuilderEdgeData>;
 type Selection = { kind: "node" | "edge"; id: string } | null;
 type Picker = { x: number; y: number; edgeId?: string } | null;
-type GraphUpdater = WorkflowSpec | ((current: WorkflowSpec) => WorkflowSpec);
 type AddNodeOptions = {
   edgeId?: string;
   shift?: { ids: Set<string>; dy: number };
@@ -127,24 +128,15 @@ function FlowAppInner() {
     getGraphDraftSnapshot,
     getServerGraphDraftSnapshot,
   );
-  const [graphState, setGraphState] = useState<WorkflowSpec | null>(null);
-  const graph = graphState ?? draftGraph ?? TEMPLATE_WORKFLOW;
-  const graphRef = useRef(graph);
-  useEffect(() => {
-    graphRef.current = graph;
-  });
-  const setGraph = useCallback((updater: GraphUpdater) => {
-    setGraphState((current) => {
-      const base = current ?? graphRef.current;
-      return typeof updater === "function" ? updater(base) : updater;
-    });
-  }, []);
+  const history = useGraphHistory(draftGraph ?? TEMPLATE_WORKFLOW);
+  const { graph, setGraph } = history;
   const [selection, setSelection] = useState<Selection>(null);
   const [picker, setPicker] = useState<Picker>(null);
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [runInput, setRunInput] = useState(DEFAULT_WORKFLOW_INPUT);
   const [notice, setNotice] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [savedGraph, setSavedGraph] = useState<WorkflowSpec | null>(null);
 
   // Drag positions live outside the spec while a drag is in flight, so
   // autosave/validation/outline only run once, on drop.
@@ -170,20 +162,9 @@ function FlowAppInner() {
     return () => window.clearTimeout(timer);
   }, [graph]);
 
-  const issues = useMemo(() => validateWorkflow(graph), [graph]);
-
-  const invalidIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const node of graph.nodes) {
-      if (node.type === "agent") {
-        const prompt = node.config.agent?.systemPrompt ?? "";
-        if (!node.config.agent || !prompt.trim()) ids.add(node.id);
-      }
-      if (node.type === "tool" && !node.config.tool) ids.add(node.id);
-      if (node.type === "llm" && !(node.config.prompt ?? "").trim()) ids.add(node.id);
-    }
-    return ids;
-  }, [graph.nodes]);
+  const validation = useMemo(() => validateWorkflowDetails(graph), [graph]);
+  const issues = validation.errors;
+  const invalidIds = useMemo(() => new Set(validation.nodeErrors.keys()), [validation]);
 
   /**
    * Node objects are identity-stable: dragging changes one position in the
@@ -228,6 +209,17 @@ function FlowAppInner() {
     [],
   );
 
+  const updateEdgeLabel = useCallback(
+    (id: string, label: string) => {
+      setGraph((current) => ({
+        ...current,
+        edges: current.edges.map((edge) => edge.id === id ? { ...edge, label } : edge),
+      }));
+      setSaved(false);
+    },
+    [setGraph],
+  );
+
   const flowEdges = useMemo<FlowEdge[]>(
     () =>
       graph.edges.map((edge) => ({
@@ -237,9 +229,13 @@ function FlowAppInner() {
         type: "builder",
         label: edge.label,
         selected: selection?.kind === "edge" && selection.id === edge.id,
-        data: { onInsert: openPickerForEdge },
+        data: {
+          onInsert: openPickerForEdge,
+          onLabelChange: updateEdgeLabel,
+          editable: graph.nodes.some((node) => node.id === edge.source && node.type === "decision"),
+        },
       })),
-    [graph.edges, selection, openPickerForEdge],
+    [graph.edges, graph.nodes, selection, openPickerForEdge, updateEdgeLabel],
   );
 
   const onNodesChange = useCallback(
@@ -520,19 +516,6 @@ function FlowAppInner() {
     [setGraph],
   );
 
-  const updateEdgeLabel = useCallback(
-    (id: string, label: string) => {
-      setGraph((current) => ({
-        ...current,
-        edges: current.edges.map((edge) =>
-          edge.id === id ? { ...edge, label } : edge,
-        ),
-      }));
-      setSaved(false);
-    },
-    [setGraph],
-  );
-
   const deleteSelection = useCallback(() => {
     if (!selection) return;
     const target = selection;
@@ -566,6 +549,7 @@ function FlowAppInner() {
       { ...graph, updatedAt: new Date().toISOString() },
     ];
     saveGraphs(next);
+    setSavedGraph(graph);
     setSaved(true);
     setNotice("Workflow saved in this browser. Export to keep a copy outside it.");
   }
@@ -589,12 +573,28 @@ function FlowAppInner() {
       setNotice(result.error);
       return;
     }
+    const imported = importBundle(text, { graphs: [] });
+    if (!imported.ok || !imported.graphs.length) return;
+    const incoming = imported.graphs[0];
+    const selected = result.graphs.find((item) => item.id === incoming.id) ?? incoming;
+    if (!replaceGraph(selected)) return;
     saveGraphs(result.graphs);
     setNotice(
       `Imported ${result.added} workflow${result.added === 1 ? "" : "s"}${
         result.skipped ? ` · kept ${result.skipped} existing` : ""
       }.`,
     );
+  }
+
+  function replaceGraph(next: WorkflowSpec) {
+    if (hasMeaningfulWork(graph) && !window.confirm("Replace the current workflow? Local autosave is not a backup. You can undo this replacement or export a copy first.")) return false;
+    setGraph(next);
+    setSelection(null);
+    setPicker(null);
+    setDragPositions(new Map());
+    setSaved(false);
+    window.requestAnimationFrame(() => { void fitView({ padding: 0.28 }); });
+    return true;
   }
 
   function openPalette(event: ReactMouseEvent<HTMLButtonElement>) {
@@ -630,8 +630,8 @@ function FlowAppInner() {
   }, [graph.nodes, graph.edges]);
 
   return (
-    <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-page">
-      <header className="z-10 flex h-14 shrink-0 items-center gap-2.5 border-b border-line bg-surface px-3">
+    <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-page" onFocusCapture={history.onFocusCapture} onBlurCapture={history.onBlurCapture}>
+      <header className="z-10 flex min-h-14 shrink-0 flex-wrap items-center gap-2.5 border-b border-line bg-surface px-3 py-2">
         <Link
           href="/"
           className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[4px] px-2 text-[13px] font-medium text-ink transition-colors hover:bg-surface-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
@@ -652,9 +652,9 @@ function FlowAppInner() {
             setGraph((current) => ({ ...current, name: event.target.value }));
             setSaved(false);
           }}
-          className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-ink placeholder:text-muted/70 focus:outline-none"
+          className="min-w-24 flex-1 bg-transparent text-sm font-semibold text-ink placeholder:text-muted/70 focus:outline-none"
         />
-        {saved ? <Badge variant="success">Saved</Badge> : null}
+        {saved && savedGraph === graph ? <Badge variant="success">Saved</Badge> : null}
         {notice ? (
           <p
             role="status"
@@ -663,7 +663,20 @@ function FlowAppInner() {
             {notice}
           </p>
         ) : null}
-        <span className="flex shrink-0 items-center gap-0.5">
+        <span className="ml-auto flex shrink-0 items-center gap-0.5">
+          <select aria-label="New workflow from template" value="" className="h-8 max-w-28 rounded-control border border-line bg-surface px-1 text-xs text-ink" onChange={(event) => {
+            if (event.target.value) replaceGraph(createWorkflowTemplate(event.target.value as TemplateId));
+          }}>
+            <option value="" disabled>+ New</option>
+            <option value="blank">Blank workflow</option>
+            <option value="refund">Refund approval loop</option>
+          </select>
+          <Button variant="ghost" size="sm" className="w-8 px-0" onClick={history.undo} disabled={!history.canUndo} title="Undo (Ctrl/Cmd+Z)">
+            <Undo2 className="size-3.5" aria-hidden /><span className="sr-only">Undo</span>
+          </Button>
+          <Button variant="ghost" size="sm" className="w-8 px-0" onClick={history.redo} disabled={!history.canRedo} title="Redo (Ctrl/Cmd+Shift+Z)">
+            <Redo2 className="size-3.5" aria-hidden /><span className="sr-only">Redo</span>
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -810,6 +823,7 @@ function FlowAppInner() {
         ) : null}
 
         <NodeInspector
+          key={selectedNode?.id ?? selectedEdge?.id ?? "none"}
           node={selectedNode}
           edge={selectedEdge}
           onClose={() => setSelection(null)}
@@ -818,6 +832,15 @@ function FlowAppInner() {
           onNodeAgent={(patch) => selectedNode && updateNodeAgent(selectedNode.id, patch)}
           onEdgeLabel={(label) => selectedEdge && updateEdgeLabel(selectedEdge.id, label)}
           onDelete={deleteSelection}
+          issues={selectedNode ? validation.nodeErrors.get(selectedNode.id) ?? [] : []}
+          onDuplicate={() => {
+            if (!selectedNode) return;
+            const copy = duplicateNode(selectedNode);
+            if (!copy) return;
+            setGraph((current) => ({ ...current, nodes: [...current.nodes, copy] }));
+            setSelection({ kind: "node", id: copy.id });
+            setSaved(false);
+          }}
         />
 
         <RunDock

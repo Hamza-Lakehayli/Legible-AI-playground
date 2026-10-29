@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Trash2 } from "lucide-react";
+import { X, Trash2, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -49,8 +49,14 @@ function ArgumentsField({
   value: unknown;
   onChange: (next: Record<string, unknown> | null) => void;
 }) {
-  const [text, setText] = useState(JSON.stringify(value ?? {}, null, 2));
+  const [draft, setDraft] = useState({ value, text: JSON.stringify(value ?? {}, null, 2) });
   const [error, setError] = useState<string | null>(null);
+  // External history restoration must replace the local JSON draft as well.
+  // Own edits retain their exact formatting (including temporarily invalid JSON).
+  if (value !== draft.value) {
+    setDraft({ value, text: JSON.stringify(value ?? {}, null, 2) });
+    setError(null);
+  }
   const example = tool ? JSON.stringify(TOOL_EXAMPLE_ARGUMENTS[tool]) : null;
 
   return (
@@ -64,18 +70,19 @@ function ArgumentsField({
       }
     >
       <textarea
-        value={text}
+        value={draft.text}
         spellCheck={false}
         rows={4}
         onChange={(event) => {
           const next = event.target.value;
-          setText(next);
+          setDraft({ value, text: next });
           try {
             const parsed: unknown = JSON.parse(next);
             if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
               throw new Error("Must be a JSON object.");
             }
             setError(null);
+            setDraft({ value: parsed, text: next });
             onChange(parsed as Record<string, unknown>);
           } catch {
             setError("Invalid JSON — the node keeps its last valid arguments.");
@@ -101,6 +108,8 @@ export function NodeInspector({
   onNodeAgent,
   onEdgeLabel,
   onDelete,
+  issues,
+  onDuplicate,
 }: {
   node: WorkflowNode | null;
   edge: WorkflowEdge | null;
@@ -110,6 +119,8 @@ export function NodeInspector({
   onNodeAgent: (patch: Partial<AgentCard>) => void;
   onEdgeLabel: (label: string) => void;
   onDelete: () => void;
+  issues: string[];
+  onDuplicate: () => void;
 }) {
   if (!node && !edge) return null;
   const headerLabel = node ? NODE_LABELS[node.type] : "Edge";
@@ -148,6 +159,12 @@ export function NodeInspector({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-3">
+        {issues.length ? (
+          <div className="mb-3 border-l-2 border-warning bg-warning/5 p-2 text-xs text-ink" role="status">
+            <p className="mb-1 font-semibold">Before this node can run</p>
+            <ul className="list-inside list-disc space-y-1">{issues.map((issue) => <li key={issue}>{issue}</li>)}</ul>
+          </div>
+        ) : null}
         {edge ? (
           <div className="space-y-4">
             <p className="text-sm text-ink">
@@ -317,6 +334,11 @@ export function NodeInspector({
           </div>
         ) : null}
       </div>
+      {node && node.type !== "start" && node.type !== "end" ? (
+        <div className="border-t border-line p-3">
+          <Button variant="secondary" size="sm" onClick={onDuplicate}><Copy className="size-3.5" aria-hidden />Duplicate node</Button>
+        </div>
+      ) : null}
     </aside>
   );
 }
