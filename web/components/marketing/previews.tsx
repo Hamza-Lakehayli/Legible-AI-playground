@@ -170,15 +170,15 @@ export function ComparePreview({ className }: { className?: string }) {
         <div className="border-l-2 border-l-accent px-4 py-4">
           <p className="font-mono text-[11px] text-accent-ink">WITH SKILL</p>
           <p className="mt-2 text-[13px]/6 text-ink">
-            "Your order #4821 ships Thursday. Refund issued for the delay — no action
-            needed."
+            “Your order #4821 ships Thursday. Refund issued for the delay — no action
+            needed.”
           </p>
         </div>
         <div className="px-4 py-4">
           <p className="font-mono text-[11px] text-muted">WITHOUT</p>
           <p className="mt-2 text-[13px]/6 text-muted">
-            "Your order has been processed and should arrive soon. Let us know if you
-            have questions."
+            “Your order has been processed and should arrive soon. Let us know if you
+            have questions.”
           </p>
         </div>
       </div>
