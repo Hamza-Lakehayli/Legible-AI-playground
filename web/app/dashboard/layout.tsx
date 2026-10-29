@@ -32,6 +32,9 @@ export default async function DashboardLayout({
       <header className="border-b border-line bg-surface">
         <div className="flex h-14 items-center justify-between gap-4 px-4 md:px-6">
           <div className="flex items-baseline gap-4">
+            {/* Hard navigation on purpose: leave the dashboard shell and its
+                client state behind when returning to the marketing site. */}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a
               href="/"
               className="flex items-baseline gap-1"

@@ -13,6 +13,8 @@ const schema = z.object({
   DATABASE_URL: z.string().optional(),
   AUTH_SECRET: z.string().optional(),
   NEXT_PUBLIC_SITE_URL: z.string().optional(),
+  NEXT_PUBLIC_RUNTIME_URL: z.url().optional(),
+  RUNTIME_TOKEN_PRIVATE_KEY: z.string().optional(),
 });
 
 const parsed = schema.safeParse(process.env);
