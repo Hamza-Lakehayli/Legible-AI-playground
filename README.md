@@ -5,8 +5,10 @@ multi-agent systems, MCP servers, skills, automations, and consulting — with
 accounts, a free tier, a data-heavy dashboard, and a playground where visitors
 run live demos on a free-tier NVIDIA-hosted model.
 
-**Status:** M0 (setup) and M1 (marketing site) complete. See `docs/` for the
-full spec and the visual design brief.
+**Status:** M0–M2 are complete. M3 (governed-agent runtime and approval flow)
+is implemented; live end-to-end runs require the runtime URL, Ed25519 token
+keys, and an NVIDIA API key to be configured. See `docs/` for the full spec
+and visual design brief.
 
 ## Structure
 
@@ -84,8 +86,8 @@ Secrets never go in `NEXT_PUBLIC_*` variables, in chat, or in git.
 
 - [x] **M0** Setup: repo layout, Next.js + Tailwind, FastAPI skeleton, Drizzle + runtime migrations, env validation
 - [x] **M1** Marketing site: home, offerings (static + partial prerender), pricing, about, SEO, OG images
-- [ ] **M2** Auth and workspace (Auth.js, protected routes, tenant-scoped data layer)
-- [ ] **M3** Runtime + governed-agent demo (token minting, SSE with resume, approvals)
+- [x] **M2** Auth and workspace (Auth.js, protected routes, tenant-scoped data layer)
+- [ ] **M3** Runtime + governed-agent demo — implementation in place; configure model/token keys and validate against a live NVIDIA run
 - [ ] **M4** Dashboard (overview, runs, run detail, approvals)
 - [ ] **M5** Quotas and replay mode
 - [ ] **M6** Billing (Polar sandbox subscriptions, webhooks, entitlements)

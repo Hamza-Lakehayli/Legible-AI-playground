@@ -25,7 +25,12 @@ The goal is to prove, in one deployed product, that you can design and ship a fu
 
 - Public site: home, one page per offering, pricing, about.
 - Auth, a personal workspace, Free and Pro plans (Polar sandbox), consulting packages as one-off test payments.
-- Six playground demos: three built in depth (governed agent with approvals, MCP explorer, agent builder) and three thin (multi-agent, skills, automations).
+- Six playground demos. The **agent builder is the primary surface**: the
+  playground opens straight onto a full-graphic, drag-and-drop canvas where
+  visitors draw the agent loop with as little friction as possible —
+  `prompt → llm → gateway → tool call (if approved) / redirect (if rejected)`.
+  The governed agent and MCP explorer demos stay in depth; multi-agent,
+  skills, and automations remain thin.
 - Dashboard: usage, runs, approvals, billing.
 - Quotas and rate limits that protect the shared free model key.
 
@@ -122,14 +127,23 @@ The playground is a set of sandboxed demos where every tool is a mock with no re
 | --- | --- | --- | --- |
 | Governed agent | Asks the agent to act (refund an order, email a customer, delete a record); risky tool calls pause and the visitor approves, edits the arguments, or rejects | Approval policies, audit trail, resumable runs | In depth |
 | MCP explorer | Picks one of your demo MCP servers, sees its tools, fills a form generated from the tool's JSON schema, calls it | MCP server design, schema-driven UI | In depth |
-| Agent builder | Assembles a run on a drag-and-drop canvas (model, agent, tool, supervisor, approval gate, output nodes), saves the graph, runs it | Graph authoring compiled to LangGraph; saved configurations | In depth |
+| Agent builder (primary) | Draws the agent loop on a drag-and-drop canvas — prompt → llm → gateway → tool call if approved, redirect if rejected — starting from a preloaded template, then runs it | Graph authoring compiled to LangGraph; saved configurations | Primary |
 | Multi-agent run | Gives a task and watches a supervisor delegate to workers on a live trace | Orchestration and tracing | Thin |
 | Skills | Picks a skill, runs it on sample text, switches it off to compare | Reusable instruction bundles | Thin |
 | Automations | Fires a simulated event (new support ticket); steps run with real model calls and stop at an approval gate | Trigger, steps, gate | Thin |
 
-**Agent builder demo**
+**Agent builder demo (the playground's primary surface)**
 
-A sixth demo where the visitor assembles a run on a drag-and-drop canvas instead of filling a form: a palette of node types (model, agent, tool, supervisor, approval gate, output), thin connector edges, and a config inspector per node. What it proves: the runtime is a real graph engine, not a scripted chat.
+The playground opens straight onto the builder canvas — no demo picker in
+front of it. The visitor sees a canvas with a preloaded template of the core
+agent loop — `prompt → llm → gateway → tool call (if approved) / redirect (if
+rejected)` — and can Run it with zero edits, or drag nodes from a palette to
+redraw the logic: a palette of node types (prompt, model, gateway/policy, tool,
+redirect, output), thin connector edges, and a config inspector per node. What
+it proves: the runtime is a real graph engine, not a scripted chat. The
+visitor shouldn't have to think much: the template runs first, examples are
+one click away, and every node speaks plain words ("gateway: approve or
+redirect") rather than framework jargon.
 
 - Each node type maps to a LangGraph construct in the runtime (see ADR 8). The canvas serializes nodes and edges to JSON; the web app validates the shape with Zod before saving.
 - Node types are curated: only mock tools from the sandbox registry, no visitor code, a cap on nodes per graph (start with 12), and cycle detection. All per-run caps still apply.
@@ -388,7 +402,7 @@ The plan is about 45 working days, roughly 7 to 10 weeks at a part-time pace. Th
 | M4 Dashboard | Overview, runs, run detail with replay, approvals page, `usage_daily` rollup | 5 | Overview numbers match the runs table; run detail replays events |
 | M5 Quotas and replay | Daily quota, global limiter, queue, response cache, replay mode, guest sample run | 3 | With the model blocked, demos work in replay mode and say so |
 | M6 Billing | Polar subscriptions, Customer Portal, webhooks, entitlements, consulting checkout and orders | 5 | Sandbox checkout raises limits, cancel lowers them, a replayed webhook is a no-op |
-| M7 More demos | MCP explorer (in depth), agent builder (in depth: canvas, palette, graph validation, saved graphs), multi-agent, skills, automations (thin) | 13 | All six demos open from the playground and appear in the dashboard |
+| M7 More demos | Agent builder (primary: canvas-first, preloaded approval-loop template that runs with zero edits, palette, graph validation, saved graphs), MCP explorer (in depth), multi-agent, skills, automations (thin) | 13 | All six demos open from the playground and appear in the dashboard |
 | M8 Polish and ship | Accessibility pass, error pages, auth rate limits, Playwright flows, deploy both services, README, ADRs, demo script | 5 | Deployed, and a stranger can try a sample run without an account |
 
 **Stretch (M9):** team workspaces and invitations, API keys, public replay links, bring-your-own-key.

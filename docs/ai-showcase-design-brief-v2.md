@@ -166,7 +166,14 @@ Make each offering page visually related but not mechanically identical. Avoid g
 
 ## 7. Playground: premium live engineering workspace
 
-The playground is the product’s signature interactive surface. It must feel as considered and modern as the dashboard—not like a basic demo form with a sidebar added afterward. Design it as a compact developer workbench: strong hierarchy, excellent information density, and a clear sense of live system behavior.
+The playground is the product's signature interactive surface. Its **default
+and primary demo is the agent builder**: a full-graphic, drag-and-drop canvas
+where visitors draw the agent loop — `prompt → llm → gateway → tool call (if
+approved) / redirect (if rejected)` — and run it with minimal friction (the
+template runs with zero edits). It must feel as considered and modern as the
+dashboard—not like a basic demo form with a sidebar added afterward. Design it
+as a compact developer workbench: strong hierarchy, excellent information
+density, and a clear sense of live system behavior.
 
 The playground should share the dashboard’s component language, typography, indigo accent, border treatment, and spacing system. It may use a dark graphite workspace to make the execution trace feel focused, but avoid a generic “hacker terminal” look.
 
@@ -256,7 +263,15 @@ Make the MCP explorer resemble a professional API workbench.
 
 ### Agent builder
 
-The builder is the playground's authoring surface: a drag-and-drop canvas where visitors assemble a run from a curated node palette (model, agent, tool, supervisor, approval gate, output) and execute it. It must read as a precision engineering tool, not a toy graph. The "no animated constellation" rule applies to run traces; this canvas earns its graphics through function.
+The builder is the playground's primary surface: the canvas the visitor lands
+on. A drag-and-drop canvas where they draw the agent loop — `prompt → llm →
+gateway → tool call (if approved) / redirect (if rejected)` — from a curated
+node palette (prompt, model, gateway/policy, tool, redirect, output) and
+execute it. It must read as a precision engineering tool, not a toy graph. The
+"no animated constellation" rule applies to run traces; this canvas earns its
+graphics through function. Friction rules: the approval-loop template is
+preloaded and runs with zero edits; node names use plain words; example graphs
+are one click away.
 
 - Canvas: quiet dotted grid, thin connector edges with small directional arrowheads, rectangular nodes with 4–6px radii, monospace node ids. Selection uses the indigo left rule and a subtle surface change, never glow.
 - Palette: a compact left panel of draggable node types, each with a one-line description. Node configuration opens in the right inspector as a labeled form, never a floating modal.
@@ -375,6 +390,14 @@ Motion should be subtle, quick, and functional.
 - Do not animate every card on scroll.
 - Avoid springy buttons, floating blobs, cursor-following effects, parallax for its own sake, and animated gradient text.
 - Never display fake typing, fake live counters, or fabricated activity in the console.
+- Single deliberate exception: the marketing site carries a time-based glitch
+  transition (see docs/hero-glitch-plan.md) as its signature moment. It is
+  decorative by design — on a page-to-page navigation the viewport acts as a
+  fixed "screen": the current content tears apart, the destination is swapped in
+  behind the chaos, and the new content resolves to a clean frame. Scrolling
+  stays completely native (no pins, no scrub), the animation is fixed-length so
+  it can never freeze mid-tear, and it is skipped entirely under
+  `prefers-reduced-motion`.
 
 ## 11. Responsive behavior
 
