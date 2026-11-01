@@ -15,8 +15,9 @@ import {
 
 /**
  * GlitchStage (docs/hero-glitch-plan.md) — the site's signature transition,
- * played on **page-to-page navigation only**. Scrolling is left completely
- * native: no pins, no scrub, no scroll-triggered landings.
+ * played on the first hydrated marketing-page load and on **page-to-page
+ * navigation**. Scrolling is left completely native: no pins, no scrub, no
+ * scroll-triggered landings.
  *
  * An intercepted internal link click starts a fixed-length, time-based
  * sequence that always plays out in full:
@@ -28,12 +29,12 @@ import {
  *   3. ENTER: the destination assembles out of the chaos and resolves clean;
  *      the stage lifts, revealing the identical real page underneath.
  *
- * Back/forward gets the same ENTER pass (there is no screen to tear down — the
- * old page is already gone). The first mount never glitches.
+ * Back/forward and the first hydrated marketing-page mount get the same ENTER
+ * pass (there is no screen to tear down — the old page is already gone).
  *
  * Reduced motion: the controller never engages and links navigate normally.
- * Server markup is untouched — the stage is an empty, hidden overlay until a
- * navigation runs.
+ * Server markup is untouched — the stage is an empty, hidden overlay until the
+ * initial client effect or a navigation runs.
  */
 
 /* Kimi-style hex/binary fragments, hand-placed (not random, so layouts stay
@@ -409,7 +410,7 @@ export function GlitchStage() {
       busy = false;
     };
 
-    /** Enter-only pass (back/forward and any navigation we didn't intercept). */
+    /** Enter-only pass (initial mount, back/forward, or un-intercepted navigation). */
     const runEnterOnly = async (): Promise<void> => {
       if (busy || isReduced() || !claimTransition(owner)) return;
       busy = true;
@@ -505,16 +506,12 @@ export function GlitchStage() {
     };
   }, []);
 
-  /* Enter-only glitch when the pathname changes outside a transition
-   * (back/forward buttons, programmatic router pushes). The first render is
-   * skipped so the landing page never glitches on load. */
-  const firstPath = useRef(true);
+  /* Enter after the first hydrated render as well as later path changes.
+   * Defer one frame so the page layout is settled before it is cloned. The
+   * frame is canceled during Strict Mode's setup/cleanup replay. */
   useEffect(() => {
-    if (firstPath.current) {
-      firstPath.current = false;
-      return;
-    }
-    enterOnlyRef.current?.();
+    const frame = requestAnimationFrame(() => enterOnlyRef.current?.());
+    return () => cancelAnimationFrame(frame);
   }, [pathname]);
 
   const renderFragment = (fragment: Fragment) => (
