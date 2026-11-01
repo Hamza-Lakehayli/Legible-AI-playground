@@ -199,6 +199,98 @@ body {
   }
 }
 
+/* A short, click-directed passage into the Playground. Navy is confined to
+   the temporary overlay; the builder beneath keeps its normal site palette. */
+.playground-entry-overlay {
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #071426;
+  color: #dceaf7;
+  opacity: 1;
+  transition: opacity 220ms ease-out;
+  outline: none;
+}
+
+.playground-entry-overlay[data-phase="crawling"] {
+  background: transparent;
+}
+
+.playground-entry-overlay--revealing {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.playground-entry-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: block;
+  pointer-events: none;
+}
+
+.playground-entry-loading,
+.playground-entry-error {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-geist-sans), sans-serif;
+  color: #dceaf7;
+}
+
+.playground-entry-loading {
+  animation: playground-entry-arrive 180ms ease-out both;
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  letter-spacing: 0.01em;
+}
+
+.playground-entry-error {
+  display: flex;
+  max-width: min(30rem, calc(100vw - 2rem));
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.playground-entry-action {
+  min-height: 2.75rem;
+  border: 1px solid #79bdd9;
+  border-radius: 4px;
+  background: #dceaf7;
+  padding: 0.625rem 1rem;
+  color: #071426;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.playground-entry-action--quiet {
+  border-color: rgb(220 234 247 / 35%);
+  background: transparent;
+  color: #dceaf7;
+}
+
+.playground-entry-action:focus-visible {
+  outline: 2px solid #dceaf7;
+  outline-offset: 3px;
+}
+
+@keyframes playground-entry-arrive {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .playground-entry-overlay,
+  .playground-entry-loading {
+    animation: none;
+    transition-duration: 1ms;
+  }
+}
+
 /*
  * Builder canvas (@xyflow/react) — the library is themed to the site, never
  * the reverse: paper surfaces, hairline edges, square-ish corners, mono labels.

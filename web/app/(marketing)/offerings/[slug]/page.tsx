@@ -6,6 +6,7 @@ import { ArrowRight } from "lucide-react";
 import { ConsolePreview } from "@/components/marketing/console-preview";
 import { OfferingPreview } from "@/components/marketing/previews";
 import { ButtonLink } from "@/components/ui/button";
+import { PlaygroundEntryLink } from "@/components/transitions/playground-entry-link";
 import { Container, Section } from "@/components/ui/layout";
 import { site } from "@/lib/site";
 import { getOffering, getOfferings } from "@/lib/data/offerings";
@@ -173,14 +174,19 @@ async function OfferingContent({ params }: Params) {
               </h2>
               <p className="mt-1 text-sm/6 text-muted">
                 {offering.demo
-                  ? "Runs on a free-tier hosted model with mock tools. Sample runs need no account."
+                  ? "Live runs require an account and use mock tools only."
                   : "One-off checkout in test mode — the booking link appears once the order is recorded."}
               </p>
             </div>
-            <ButtonLink href={offering.demo ? "/playground" : "/pricing"} variant="secondary">
-              {offering.demo ? "Open the demo" : "See packages"}
-              <ArrowRight className="size-4" aria-hidden />
-            </ButtonLink>
+            {offering.demo ? (
+              <PlaygroundEntryLink variant="secondary">
+                Open Playground <ArrowRight className="size-4" aria-hidden />
+              </PlaygroundEntryLink>
+            ) : (
+              <ButtonLink href="/pricing" variant="secondary">
+                See packages <ArrowRight className="size-4" aria-hidden />
+              </ButtonLink>
+            )}
           </div>
         </Container>
       </Section>

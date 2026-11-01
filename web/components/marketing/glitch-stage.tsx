@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { claimTransition, releaseTransition, transitionOwnedElsewhere } from "@/lib/transition-ownership";
 import {
   TEAR_STEPS,
   enterIntensity,
@@ -151,17 +152,23 @@ export function GlitchStage() {
     );
     let busy = false;
     let cancelled = false;
+    const owner = Symbol("marketing-glitch");
+    let scrollLock: { overflow: string; padding: string } | null = null;
 
     const isReduced = () => reducedMotion();
 
     const lockScroll = () => {
+      scrollLock = { overflow: document.documentElement.style.overflow, padding: document.body.style.paddingRight };
       const scrollbar = window.innerWidth - document.documentElement.clientWidth;
       document.documentElement.style.overflow = "hidden";
       if (scrollbar > 0) document.body.style.paddingRight = `${scrollbar}px`;
     };
     const unlockScroll = () => {
-      document.documentElement.style.overflow = "";
-      document.body.style.paddingRight = "";
+      if (!scrollLock) return;
+      document.documentElement.style.overflow = scrollLock.overflow;
+      document.body.style.paddingRight = scrollLock.padding;
+      scrollLock = null;
+      releaseTransition(owner);
     };
 
     /* ---------- clone stage ---------- */
@@ -365,7 +372,7 @@ export function GlitchStage() {
     };
 
     const runTransition = async (href: string): Promise<void> => {
-      if (busy || isReduced()) return;
+      if (busy || isReduced() || !claimTransition(owner)) return;
       busy = true;
 
       lockScroll();
@@ -404,7 +411,7 @@ export function GlitchStage() {
 
     /** Enter-only pass (back/forward and any navigation we didn't intercept). */
     const runEnterOnly = async (): Promise<void> => {
-      if (busy || isReduced()) return;
+      if (busy || isReduced() || !claimTransition(owner)) return;
       busy = true;
       lockScroll();
       stage.dataset.state = "on";
@@ -449,6 +456,7 @@ export function GlitchStage() {
     const onClick = (event: MouseEvent) => {
       if (event.defaultPrevented || event.button !== 0) return;
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      if (transitionOwnedElsewhere(owner)) { event.preventDefault(); return; }
       if (isReduced()) return;
       /* Clicks during a transition are swallowed: the page under the cursor
        * is about to be replaced by the destination. */
@@ -458,6 +466,9 @@ export function GlitchStage() {
       }
       const anchor = (event.target as HTMLElement | null)?.closest?.("a");
       if (!anchor) return;
+      // Playground owns a persistent root-level transition; keep this
+      // marketing-only stage from competing for the same click.
+      if (anchor.hasAttribute("data-playground-entry")) return;
       const href = anchor.getAttribute("href");
       if (!href || !href.startsWith("/") || anchor.target === "_blank") return;
       if (anchor.hasAttribute("download")) return;
@@ -490,6 +501,7 @@ export function GlitchStage() {
       document.removeEventListener("click", onClick, true);
       clearStage();
       unlockScroll();
+      releaseTransition(owner);
     };
   }, []);
 

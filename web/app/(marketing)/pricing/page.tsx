@@ -6,25 +6,26 @@ import { Badge } from "@/components/ui/badge";
 import { Container, Eyebrow, Section } from "@/components/ui/layout";
 import { getSession } from "@/lib/session";
 import { getEntitlements } from "@/lib/entitlements";
+import { PlaygroundEntryLink } from "@/components/transitions/playground-entry-link";
 
 export const metadata: Metadata = {
   title: "Pricing",
   description:
-    "Guest, Free, and Pro plans with concrete limits — plus consulting packages. Billing runs in Polar sandbox mode; nothing is sold.",
+    "Free and Pro plans with concrete limits — plus consulting packages. The workflow editor is open to explore; sign in to start live runs.",
   alternates: { canonical: "/pricing" },
 };
 
 const plans = [
   {
-    name: "Guest",
-    price: "No account",
-    priceSub: "3 runs per day",
+    name: "Preview",
+    price: "Free",
+    priceSub: "Explore the editor",
     limits: [
-      { label: "Runs per day", value: "3" },
-      { label: "Demos", value: "Governed agent only" },
+      { label: "Workflow editor", value: "Open access" },
+      { label: "Live runs", value: "Sign in required" },
       { label: "Run history", value: "None" },
     ],
-    cta: { label: "Start without an account", href: "/playground", variant: "secondary" as const },
+    cta: { label: "Open Playground", href: "/playground", variant: "secondary" as const },
   },
   {
     name: "Free",
@@ -112,13 +113,15 @@ export default function PricingPage() {
                 ))}
               </dl>
               <div className="mt-6 pt-2">
-                <ButtonLink
-                  href={plan.cta.href}
-                  variant={plan.cta.variant}
-                  className="w-full"
-                >
-                  {plan.cta.label}
-                </ButtonLink>
+                {plan.cta.href === "/playground" ? (
+                  <PlaygroundEntryLink variant="secondary" className="w-full">
+                    {plan.cta.label}
+                  </PlaygroundEntryLink>
+                ) : (
+                  <ButtonLink href={plan.cta.href} variant={plan.cta.variant} className="w-full">
+                    {plan.cta.label}
+                  </ButtonLink>
+                )}
               </div>
             </div>
           ))}
@@ -158,7 +161,7 @@ async function CurrentPlanNote() {
   }
   return (
     <p className="rounded-control border border-line bg-surface px-3 py-1.5 font-mono text-xs text-muted">
-      signed out — guest limits apply until you register
+      signed out — the editor is open to explore; sign in to start live runs
     </p>
   );
 }

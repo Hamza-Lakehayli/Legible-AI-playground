@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { connection } from "next/server";
 import { auth } from "@/lib/auth";
 import { ButtonLink } from "@/components/ui/button";
+import { PlaygroundEntryLink } from "@/components/transitions/playground-entry-link";
 
 /**
  * Account area — the dynamic island in the header. It renders only for a
@@ -31,9 +32,9 @@ async function AccountArea() {
       <ButtonLink href="/login" variant="ghost" size="sm">
         Log in
       </ButtonLink>
-      <ButtonLink href="/playground" size="sm">
-        Open playground
-      </ButtonLink>
+      <PlaygroundEntryLink variant="primary" size="sm">
+        Open Playground
+      </PlaygroundEntryLink>
     </>
   );
 }

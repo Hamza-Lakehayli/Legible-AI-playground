@@ -7,6 +7,7 @@ import { OfferingPreview } from "@/components/marketing/previews";
 import { ButtonLink } from "@/components/ui/button";
 import { Container, Eyebrow, Section, SectionHeader } from "@/components/ui/layout";
 import { getOfferings, type Offering } from "@/lib/data/offerings";
+import { PlaygroundEntryLink } from "@/components/transitions/playground-entry-link";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
@@ -20,36 +21,37 @@ export default async function HomePage() {
 
   return (
     <>
-      {/* Hero — editorial composition, not a centered gradient (brief §6) */}
-      <Section className="pb-14 md:pb-20 md:pt-20">
+      {/* One clear entry point; the workflow is the hero. */}
+      <Section className="pb-10 pt-14 md:pb-14 md:pt-20">
         <Container>
-          <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_440px]">
-            <div>
-              <Eyebrow>Independent AI engineering</Eyebrow>
-              <h1 className="mt-4 text-4xl font-semibold tracking-tight text-balance sm:text-5xl md:text-6xl">
-                AI systems you can inspect, test, and trust.
-              </h1>
-              <p className="mt-6 max-w-xl text-lg/8 text-muted">
-                Agents, governed agents, multi-agent systems, and MCP servers —
-                presented as working software with real traces, policy gates, and
-                audit trails. Not slides. Not promises.
-              </p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <ButtonLink href="/offerings">Explore the work</ButtonLink>
-                <ButtonLink href="/playground" variant="secondary">
-                  Try a live demo
-                </ButtonLink>
-              </div>
-              <p className="mt-5 font-mono text-xs text-muted">
-                sample runs need no account · mock tools only
-              </p>
-            </div>
-            <div>
-              <ConsolePreview className="shadow-[0_16px_40px_-24px_rgba(25,26,24,0.35)]" />
-              <p className="mt-3 text-center font-mono text-[11px] text-muted">
-                the governed-agent console — tool calls, policy, approval, audit
-              </p>
-            </div>
+          <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
+            <Eyebrow>Independent AI engineering</Eyebrow>
+            <h1 className="mt-4 text-4xl font-semibold tracking-tight text-balance sm:text-5xl md:text-6xl">
+              AI systems you can inspect, test, and trust.
+            </h1>
+            <p className="mt-5 max-w-2xl text-base/7 text-muted sm:text-lg/8">
+              Open a workflow canvas, inspect a governed run, and see exactly where a human decision belongs.
+            </p>
+            <PlaygroundEntryLink variant="primary" className="mt-8 min-h-12 px-7 text-[15px] font-semibold shadow-[0_8px_24px_-16px_rgba(25,26,24,0.55)]">
+              Open Playground
+            </PlaygroundEntryLink>
+            <p className="mt-3 max-w-xl text-sm/6 text-muted">
+              The Playground is temporarily unavailable while we deploy its runtime.
+            </p>
+            <ButtonLink href="/offerings" variant="secondary" size="sm" className="mt-5">
+              Explore the work <ArrowRight className="size-3.5" aria-hidden />
+            </ButtonLink>
+          </div>
+        </Container>
+      </Section>
+
+      <Section className="pt-0 pb-16 md:pb-20">
+        <Container>
+          <div className="mx-auto max-w-4xl">
+            <ConsolePreview className="shadow-[0_16px_40px_-24px_rgba(25,26,24,0.35)]" />
+            <p className="mt-3 text-center font-mono text-[11px] text-muted">
+              the governed-agent console — tool calls, policy, approval, audit
+            </p>
           </div>
         </Container>
       </Section>
@@ -115,12 +117,11 @@ export default async function HomePage() {
                     Read <ArrowRight className="size-3.5" aria-hidden />
                   </Link>
                   {offering.demo ? (
-                    <Link
-                      href="/playground"
+                    <PlaygroundEntryLink
                       className="text-muted underline-offset-4 hover:text-ink hover:underline"
                     >
                       Try the demo
-                    </Link>
+                    </PlaygroundEntryLink>
                   ) : null}
                 </div>
               </li>
@@ -161,12 +162,11 @@ function WideCopy({ offering }: { offering: Offering }) {
         >
           How it works <ArrowRight className="size-3.5" aria-hidden />
         </Link>
-        <Link
-          href="/playground"
+        <PlaygroundEntryLink
           className="text-muted underline-offset-4 hover:text-ink hover:underline"
         >
           Run the demo
-        </Link>
+        </PlaygroundEntryLink>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Container } from "@/components/ui/layout";
 import { site } from "@/lib/site";
 import { offerings } from "@/lib/content/offerings";
+import { PlaygroundEntryLink } from "@/components/transitions/playground-entry-link";
 
 export function SiteFooter() {
   const year = site.foundedYear;
@@ -46,12 +47,18 @@ export function SiteFooter() {
             <ul className="mt-3 space-y-2">
               {site.nav.map((item) => (
                 <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    className="text-sm text-muted transition-colors hover:text-ink"
-                  >
-                    {item.label}
-                  </Link>
+                  {item.href === "/playground" ? (
+                    <PlaygroundEntryLink className="text-sm text-muted transition-colors hover:text-ink">
+                      {item.label}
+                    </PlaygroundEntryLink>
+                  ) : (
+                    <Link
+                      href={item.href}
+                      className="text-sm text-muted transition-colors hover:text-ink"
+                    >
+                      {item.label}
+                    </Link>
+                  )}
                 </li>
               ))}
               <li>

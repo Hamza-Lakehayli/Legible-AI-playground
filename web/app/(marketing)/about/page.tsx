@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ButtonLink } from "@/components/ui/button";
+import { PlaygroundEntryLink } from "@/components/transitions/playground-entry-link";
 import { Container, Eyebrow, Section } from "@/components/ui/layout";
 
 export const metadata: Metadata = {
@@ -65,9 +66,9 @@ export default function AboutPage() {
 
         <div className="mt-12 flex flex-wrap gap-3">
           <ButtonLink href="/offerings">Explore the work</ButtonLink>
-          <ButtonLink href="/playground" variant="secondary">
+          <PlaygroundEntryLink variant="secondary">
             Try a demo
-          </ButtonLink>
+          </PlaygroundEntryLink>
         </div>
       </Container>
     </Section>

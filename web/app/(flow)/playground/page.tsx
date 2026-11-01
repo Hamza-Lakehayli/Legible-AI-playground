@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import { FlowApp } from "@/components/builder/flow-app";
+import { PlaygroundUnavailable } from "@/components/builder/playground-unavailable";
 
 export const metadata: Metadata = {
   title: "Playground",
-  description:
-    "Draw a workflow canvas: start, agent, LLM call, tool, and decision nodes. Click an agent node to fill its config card, then run it on the governed runtime with mock tools, human approval gates, and an inspectable event trace.",
+  description: "The Playground runtime is being deployed and is temporarily unavailable.",
   alternates: { canonical: "/playground" },
 };
 
@@ -15,5 +14,5 @@ export const metadata: Metadata = {
  * that never scrolls.
  */
 export default function PlaygroundPage() {
-  return <FlowApp />;
+  return <PlaygroundUnavailable />;
 }

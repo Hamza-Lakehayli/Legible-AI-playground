@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { site } from "@/lib/site";
+import { PlaygroundEntryProvider } from "@/components/transitions/playground-entry-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,9 +44,10 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      data-scroll-behavior="smooth"
     >
       <body className="flex min-h-full flex-col">
-        {children}
+        <PlaygroundEntryProvider>{children}</PlaygroundEntryProvider>
       </body>
     </html>
   );

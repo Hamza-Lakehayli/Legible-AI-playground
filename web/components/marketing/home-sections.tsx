@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowRight, Bot, Network, Server, ShieldCheck, Workflow } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button";
+import { PlaygroundEntryLink } from "@/components/transitions/playground-entry-link";
 import { Container, Section, SectionHeader } from "@/components/ui/layout";
 import { site } from "@/lib/site";
 
@@ -183,12 +184,14 @@ export function ClosingCta() {
             </h2>
             <p className="mt-3 max-w-xl text-base/7 text-muted">
               The governed-agent demo pauses mid-run, shows its proposed arguments, and
-              waits. Sample runs need no account — mock tools only, nothing real is
-              touched.
+              waits. Sign in to start a live run; every tool remains a mock, and no
+              external system is touched.
             </p>
           </div>
           <div className="flex flex-row flex-wrap gap-3 md:justify-end">
-            <ButtonLink href="/playground">Try a live demo</ButtonLink>
+            <PlaygroundEntryLink variant="primary">
+              Open Playground
+            </PlaygroundEntryLink>
             <ButtonLink href="/offerings/governed-agents" variant="secondary">
               How it works
             </ButtonLink>

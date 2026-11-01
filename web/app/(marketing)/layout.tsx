@@ -1,7 +1,6 @@
 import { SiteFooter } from "@/components/marketing/site-footer";
 import { SiteHeader } from "@/components/marketing/site-header";
 import { GlitchStage } from "@/components/marketing/glitch-stage";
-import { ScrollProgressRing } from "@/components/marketing/scroll-progress-ring";
 
 export default function MarketingLayout({
   children,
@@ -22,7 +21,6 @@ export default function MarketingLayout({
       </main>
       <SiteFooter />
       <GlitchStage />
-      <ScrollProgressRing />
     </>
   );
 }

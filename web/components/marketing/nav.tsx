@@ -7,6 +7,7 @@ import { Menu, X } from "lucide-react";
 import { site } from "@/lib/site";
 import { cn } from "@/lib/utils";
 import { ButtonLink, buttonVariants } from "@/components/ui/button";
+import { PlaygroundEntryLink } from "@/components/transitions/playground-entry-link";
 
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -19,7 +20,11 @@ export function DesktopNav() {
 
   return (
     <nav aria-label="Main" className="hidden items-center gap-7 md:flex">
-      {site.nav.map((item) => (
+      {site.nav.map((item) => item.href === "/playground" ? (
+        <PlaygroundEntryLink key={item.href} className="text-sm text-muted underline-offset-8 transition-colors hover:text-ink">
+          {item.label}
+        </PlaygroundEntryLink>
+      ) : (
         <Link
           key={item.href}
           href={item.href}
@@ -47,6 +52,7 @@ export function MobileNav() {
     <div className="md:hidden">
       <button
         type="button"
+        data-playground-focus-fallback
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-controls="mobile-nav"
@@ -61,7 +67,13 @@ export function MobileNav() {
           className="absolute inset-x-0 top-full border-b border-line bg-page px-6 pt-2 pb-6"
         >
           <nav aria-label="Main mobile" className="flex flex-col">
-            {site.nav.map((item) => (
+            {site.nav.map((item) => item.href === "/playground" ? (
+              <PlaygroundEntryLink
+                key={item.href}
+                onClick={() => setOpen(false)}
+                className="border-l-2 border-transparent py-3 text-sm text-muted"
+              >{item.label}</PlaygroundEntryLink>
+            ) : (
               <Link
                 key={item.href}
                 href={item.href}
@@ -73,22 +85,19 @@ export function MobileNav() {
                     ? "border-accent font-medium text-ink"
                     : "border-transparent text-muted",
                 )}
-              >
-                {item.label}
-              </Link>
+              >{item.label}</Link>
             ))}
           </nav>
           <div className="mt-4 flex flex-col gap-2">
             <ButtonLink href="/login" variant="secondary" onClick={() => setOpen(false)}>
               Log in
             </ButtonLink>
-            <ButtonLink
-              href="/playground"
+            <PlaygroundEntryLink
               className={buttonVariants()}
               onClick={() => setOpen(false)}
             >
-              Open playground
-            </ButtonLink>
+              Open Playground
+            </PlaygroundEntryLink>
           </div>
         </div>
       ) : null}

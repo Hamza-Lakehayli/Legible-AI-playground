@@ -25,6 +25,7 @@ import {
   type NodeDimensionChange,
   type NodePositionChange,
   type XYPosition,
+  useNodesInitialized,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import Link from "next/link";
@@ -65,6 +66,7 @@ import { NodeInspector } from "./flow/inspector";
 import { RunDock } from "./flow/run-dock";
 import { useGraphHistory } from "./use-graph-history";
 import { duplicateNode, hasMeaningfulWork } from "@/lib/builder/editing";
+import { usePlaygroundEntry } from "@/components/transitions/playground-entry-provider";
 
 type FlowNode = Node<BuilderNodeData>;
 type FlowEdge = Edge<BuilderEdgeData>;
@@ -87,6 +89,9 @@ const edgeTypes = { builder: BuilderEdge };
  * graphs is safe.
  */
 const flowNodeCache = new Map<string, { obj: FlowNode; sig: string }>();
+const subscribeHydration = () => () => {};
+const getHydratedSnapshot = () => true;
+const getServerHydrationSnapshot = () => false;
 
 function summarize(node: WorkflowNode): string {
   switch (node.type) {
@@ -130,6 +135,12 @@ function FlowAppInner() {
   );
   const history = useGraphHistory(draftGraph ?? TEMPLATE_WORKFLOW);
   const { graph, setGraph } = history;
+  const { signalReady, requestId } = usePlaygroundEntry();
+  const nodesInitialized = useNodesInitialized();
+  const draftResolved = useSyncExternalStore(subscribeHydration, getHydratedSnapshot, getServerHydrationSnapshot);
+  const flowCanvasRef = useRef<HTMLDivElement>(null);
+  const measuredNodeIds = useRef(new Set<string>());
+  const [measurementVersion, setMeasurementVersion] = useState(0);
   const [selection, setSelection] = useState<Selection>(null);
   const [picker, setPicker] = useState<Picker>(null);
   const [outlineOpen, setOutlineOpen] = useState(false);
@@ -145,7 +156,11 @@ function FlowAppInner() {
   );
 
   const fileRef = useRef<HTMLInputElement>(null);
-  const { screenToFlowPosition, fitView } = useReactFlow<FlowNode, FlowEdge>();
+  const { screenToFlowPosition, fitView, viewportInitialized } = useReactFlow<FlowNode, FlowEdge>();
+  // Track RF's dimensions events as well as its aggregate hook. This controlled
+  // canvas intentionally merges those dimension changes into an identity cache
+  // instead of replacing the graph spec, so the local readiness proof matters.
+  const allNodesMeasured = graph.nodes.every((node) => measuredNodeIds.current.has(node.id));
 
   const fittedDraft = useRef(false);
   useEffect(() => {
@@ -156,6 +171,41 @@ function FlowAppInner() {
     });
     return () => window.cancelAnimationFrame(frame);
   }, [draftGraph, fitView]);
+
+  useEffect(() => {
+    if (!requestId || !draftResolved || !viewportInitialized || (graph.nodes.length > 0 && !nodesInitialized && !allNodesMeasured)) return;
+    let firstFrame = 0;
+    let secondFrame = 0;
+    let observer: ResizeObserver | undefined;
+    let cancelled = false;
+    const afterPaint = () => {
+      secondFrame = requestAnimationFrame(() => {
+        const bounds = flowCanvasRef.current?.getBoundingClientRect();
+        if (!cancelled && bounds && bounds.width > 0 && bounds.height > 0) {
+          signalReady(requestId);
+          observer?.disconnect();
+          return;
+        }
+        if (!observer && flowCanvasRef.current) {
+          observer = new ResizeObserver(() => {
+            const rect = flowCanvasRef.current?.getBoundingClientRect();
+            if (!cancelled && rect && rect.width > 0 && rect.height > 0) {
+              signalReady(requestId);
+              observer?.disconnect();
+            }
+          });
+          observer.observe(flowCanvasRef.current);
+        }
+      });
+    };
+    firstFrame = requestAnimationFrame(afterPaint);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(firstFrame);
+      cancelAnimationFrame(secondFrame);
+      observer?.disconnect();
+    };
+  }, [requestId, draftResolved, viewportInitialized, nodesInitialized, allNodesMeasured, measurementVersion, graph.nodes.length, signalReady]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => saveGraphDraft(graph), 500);
@@ -251,6 +301,7 @@ function FlowAppInner() {
           change.type === "dimensions" && Boolean(change.dimensions),
       );
       if (dimensionChanges.length) {
+        let hasNewMeasurements = false;
         for (const change of dimensionChanges) {
           const dims = change.dimensions;
           if (!dims) continue;
@@ -269,7 +320,12 @@ function FlowAppInner() {
               obj: { id: change.id, measured } as unknown as FlowNode,
             });
           }
+          if (!measuredNodeIds.current.has(change.id)) {
+            measuredNodeIds.current.add(change.id);
+            hasNewMeasurements = true;
+          }
         }
+        if (hasNewMeasurements) setMeasurementVersion((version) => version + 1);
       }
 
       const removals = changes.filter((change) => change.type === "remove");
@@ -630,7 +686,7 @@ function FlowAppInner() {
   }, [graph.nodes, graph.edges]);
 
   return (
-    <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-page" onFocusCapture={history.onFocusCapture} onBlurCapture={history.onBlurCapture}>
+    <main id="playground-main" tabIndex={-1} aria-label="Workflow playground" className="flex h-dvh min-h-0 flex-col overflow-hidden bg-page outline-none" onFocusCapture={history.onFocusCapture} onBlurCapture={history.onBlurCapture}>
       <header className="z-10 flex min-h-14 shrink-0 flex-wrap items-center gap-2.5 border-b border-line bg-surface px-3 py-2">
         <Link
           href="/"
@@ -718,7 +774,7 @@ function FlowAppInner() {
       </header>
 
       <div className="relative min-h-0 flex-1">
-        <div className="flow-canvas absolute inset-0">
+        <div ref={flowCanvasRef} className="flow-canvas absolute inset-0">
           <ReactFlow<FlowNode, FlowEdge>
             nodes={flowNodes}
             edges={flowEdges}
@@ -871,6 +927,6 @@ function FlowAppInner() {
           />
         ) : null}
       </div>
-    </div>
+    </main>
   );
 }
