@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import { PlaygroundUnavailable } from "@/components/builder/playground-unavailable";
+import { FlowApp } from "@/components/builder/flow-app";
 
 export const metadata: Metadata = {
   title: "Playground",
-  description: "The Playground runtime is being deployed and is temporarily unavailable.",
+  description:
+    "Explore a governed workflow canvas with mock tools, human approval gates, and an inspectable run trace.",
   alternates: { canonical: "/playground" },
 };
 
@@ -14,5 +15,5 @@ export const metadata: Metadata = {
  * that never scrolls.
  */
 export default function PlaygroundPage() {
-  return <PlaygroundUnavailable />;
+  return <FlowApp />;
 }

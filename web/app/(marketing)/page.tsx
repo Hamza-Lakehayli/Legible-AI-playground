@@ -36,7 +36,7 @@ export default async function HomePage() {
               Open Playground
             </PlaygroundEntryLink>
             <p className="mt-3 max-w-xl text-sm/6 text-muted">
-              The Playground is temporarily unavailable while we deploy its runtime.
+              The workflow editor is available in this protected preview; live runs are being tested.
             </p>
             <ButtonLink href="/offerings" variant="secondary" size="sm" className="mt-5">
               Explore the work <ArrowRight className="size-3.5" aria-hidden />
