@@ -12,6 +12,13 @@ function encode(value: string | Buffer) {
 }
 
 export async function POST() {
+  if (process.env.PLAYGROUND_LIVE_RUNS_ENABLED !== "true") {
+    return NextResponse.json(
+      { error: "Live runs are disabled for this deployment." },
+      { status: 503 },
+    );
+  }
+
   const session = await getSession();
   if (!session?.user?.id || !session.user.workspaceId) {
     return NextResponse.json({ error: "Sign in to start a live run." }, { status: 401 });
