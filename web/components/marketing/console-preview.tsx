@@ -51,7 +51,7 @@ const fullRows: Row[] = [
     type: "tool.requested",
     tone: "ink",
     detail: 'orders.lookup {"order_id": "4821"}',
-    sub: "risk: low · completed in 118 ms",
+    sub: "seeded demo data · mock tool",
     icon: Wrench,
   },
   {
@@ -60,13 +60,13 @@ const fullRows: Row[] = [
     tone: "ink",
     detail: 'orders.refund {"order_id": "4821", "amount": "49.90 EUR"}',
     icon: Wrench,
-    right: "HIGH",
+    right: "ASK",
   },
   {
     time: "00:05",
     type: "policy.evaluated",
     tone: "muted",
-    detail: "orders.refund → ask — refund amount is over the threshold.",
+    detail: "orders.refund → ask — policy requires approval for this action.",
     icon: ShieldCheck,
   },
   {
@@ -81,7 +81,7 @@ const fullRows: Row[] = [
     time: "00:41",
     type: "approval.resolved",
     tone: "muted",
-    detail: "Approved by visitor — amount confirmed at 49.90 EUR.",
+    detail: "Sample decision — proposed amount confirmed at 49.90 EUR.",
     icon: ScrollText,
   },
   {
@@ -89,7 +89,7 @@ const fullRows: Row[] = [
     type: "tool.completed",
     tone: "ink",
     detail: "orders.refund → refund_id: rf_2211",
-    sub: "completed in 96 ms",
+    sub: "mock tool result · no external side effect",
     icon: CircleCheck,
   },
   {
@@ -104,14 +104,25 @@ const fullRows: Row[] = [
 /** Narrower cut of the same run for split feature rows (agents). */
 const agentRows: Row[] = fullRows.slice(0, 4);
 
+const proofDetails: Record<string, string> = {
+  "tool.requested": "orders.refund · order #4821 · 49.90 EUR",
+  "approval.required": "Paused for a human decision.",
+  "approval.resolved": "Sample decision: approved at 49.90 EUR.",
+  "tool.completed": "Mock refund result: rf_2211",
+};
+
 export function ConsolePreview({
   variant = "full",
   className,
 }: {
-  variant?: "full" | "agents";
+  variant?: "full" | "agents" | "proof";
   className?: string;
 }) {
-  const rows = variant === "full" ? fullRows : agentRows;
+  const rows = variant === "agents"
+    ? agentRows
+    : variant === "proof"
+      ? fullRows.filter((_, index) => [3, 4, 5, 6, 7].includes(index))
+      : fullRows;
 
   return (
     <div data-theme="console">
@@ -122,13 +133,13 @@ export function ConsolePreview({
         className={className}
       >
         <div className="flex items-center gap-3 border-b border-line px-4 py-2.5 font-mono text-[11px] text-muted">
-          <span>run_7k2m9x</span>
+          <span>sample trace</span>
           <span aria-hidden>·</span>
-          <span className="hidden sm:inline">nvidia/llama-3.3-70b-instruct</span>
+          <span className="hidden sm:inline">runtime default</span>
           <span aria-hidden className="hidden sm:inline">
             ·
           </span>
-          <span>00:42 elapsed</span>
+          <span>example sequence</span>
         </div>
 
         <ul className="divide-y divide-line">
@@ -139,9 +150,10 @@ export function ConsolePreview({
               type={row.type}
               tone={row.tone}
               icon={row.icon}
-              detail={row.detail}
-              sub={row.sub}
+              detail={variant === "proof" ? proofDetails[row.type] ?? row.detail : row.detail}
+              sub={variant === "proof" ? undefined : row.sub}
               highlight={row.highlight}
+              className={variant === "proof" && row.type === "policy.evaluated" ? "max-sm:hidden" : undefined}
               right={
                 row.right ? (
                   <span className="font-mono text-[10px] font-medium tracking-wide text-warning">

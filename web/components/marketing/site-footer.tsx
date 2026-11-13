@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Container } from "@/components/ui/layout";
 import { site } from "@/lib/site";
-import { offerings } from "@/lib/content/offerings";
 import { PlaygroundEntryLink } from "@/components/transitions/playground-entry-link";
 
 export function SiteFooter() {
@@ -9,40 +8,22 @@ export function SiteFooter() {
 
   return (
     <footer className="border-t border-line">
-      <Container className="py-12">
-        <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr]">
+      <Container className="max-w-7xl py-12">
+        <div className="grid gap-10 md:grid-cols-[1fr_auto]">
           <div>
             <p className="flex items-baseline gap-1">
               <span className="text-lg font-semibold tracking-tight">{site.name}</span>
               <span className="font-mono text-sm text-accent">/ai</span>
             </p>
             <p className="mt-3 max-w-xs text-sm/6 text-muted">
-              {site.tagline}. Built in the open as a Next.js showcase — billing runs in
-              Polar sandbox mode, nothing is sold, and every demo tool is a mock.
+              {site.tagline}. A working product demo; Playground tools use seeded
+              data and do not change external systems.
             </p>
           </div>
 
-          <nav aria-label="Work">
+          <nav aria-label="Product">
             <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted uppercase">
-              Work
-            </p>
-            <ul className="mt-3 space-y-2">
-              {offerings.map((o) => (
-                <li key={o.slug}>
-                  <Link
-                    href={`/offerings/${o.slug}`}
-                    className="text-sm text-muted transition-colors hover:text-ink"
-                  >
-                    {o.title}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
-
-          <nav aria-label="Site">
-            <p className="font-mono text-xs font-medium tracking-[0.14em] text-muted uppercase">
-              Site
+              Product
             </p>
             <ul className="mt-3 space-y-2">
               {site.nav.map((item) => (

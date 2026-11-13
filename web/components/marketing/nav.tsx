@@ -10,8 +10,9 @@ import { ButtonLink, buttonVariants } from "@/components/ui/button";
 import { PlaygroundEntryLink } from "@/components/transitions/playground-entry-link";
 
 function isActive(pathname: string, href: string) {
-  if (href === "/") return pathname === "/";
-  return pathname === href || pathname.startsWith(`${href}/`);
+  const route = href.split("#")[0] || "/";
+  if (route === "/") return pathname === "/";
+  return pathname === route || pathname.startsWith(`${route}/`);
 }
 
 /** Text links with a restrained accent underline for the active route. */

@@ -1,5 +1,62 @@
 # Playground builders — implementation plan
 
+## Deferred expansion: providers and thinking
+
+Added 2026-11-10. Planning only; resume after presentation acceptance. This
+addendum is not an assertion that the planned integrations already work.
+
+**Verified baseline:** `runtime/app/model_requests.py` uses HTTPX to call the
+configured NVIDIA chat-completions endpoint. `runtime/requirements.txt` includes
+neither LangChain nor LangGraph. Current agent config stores a nullable model
+identifier, with no provider or reasoning-settings schema. Dedicated thinking
+controls and a separate reasoning-summary view are not implemented.
+
+### Provider selection
+
+- Agreed direction after presentation: LangChain model adapters/agent loops and
+  LangGraph workflow orchestration with durable approval interrupts. Migrate
+  adapters first, then one parity-tested agent, then graph execution/checkpoints
+  and broader provider/thinking options. Preserve FastAPI, canvas, authorization,
+  policy/audit contracts, and explicit tool idempotency. LangChain integrations
+  include OpenAI, Anthropic, Google Gemini, Mistral, NVIDIA, Groq, Cohere, xAI,
+  AWS Bedrock, Ollama, and others; these are candidates, not tested Legible
+  integrations.
+- Add provider/model selection to Agent and LLM-call inspectors, with runtime
+  default inheritance and explicit unavailable/unsupported states.
+- Track capabilities per model: tool calling, structured output, streaming,
+  reasoning controls, context/output limits, and accepted generation parameters.
+- Keep credentials server-side; saved/exported graphs contain connection
+  references only. Enforce provider/model allowlists and reject arbitrary base
+  URLs. Preserve drafts through versioned config migration and import/export.
+- Verify message/tool-call translation, timeout/cancellation behavior, errors,
+  usage accounting, and approval resume for each provider. Retain shared spend,
+  token, retry, and concurrency budgets; no fallback that broadens permissions.
+
+### Thinking/reasoning controls and display
+
+- Add provider-default, effort, budget, or off settings only where the selected
+  model supports them. Validate settings server-side; do not silently ignore
+  unsupported parameters or assume one universal thinking toggle.
+- Distinguish real execution status, provider-supported reasoning summaries,
+  and final output. Never fabricate thoughts or promise hidden chain-of-thought.
+  Show unavailable/redacted summaries honestly and define storage/redaction rules.
+- Preserve opaque reasoning/signature blocks where providers require them for
+  tool turns, without presenting them as readable explanations.
+- Include reasoning in latency, output-token, and spend budgets. Test default,
+  disabled, unavailable, interrupted, failure, and provider-switching cases.
+
+**Acceptance:** provider contract tests, schema-migration tests, capability
+validation, and accessible inspector/run-view browser checks. Keep production
+live runs gated until usage safeguards are complete. Homepage provider messaging
+belongs beside canvas configuration and must stay labeled planned until verified.
+
+Sources checked: https://docs.langchain.com/oss/python/integrations/chat and
+https://docs.langchain.com/oss/python/langchain/models#reasoning. An
+OpenAI-compatible endpoint alone does not guarantee preservation of third-party
+reasoning fields; use and verify provider-specific adapters where necessary.
+
+---
+
 Reworks the playground around **two builders** with a chooser as the entry
 point, replacing today's "console-first" page. Visited 2026-10-28 with the
 owner; decisions below are locked.

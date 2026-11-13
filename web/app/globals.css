@@ -1,5 +1,111 @@
 @import "tailwindcss";
 
+/* Homepage chapters: one complete product composition per desktop viewport. */
+.home-chapter {
+  position: relative;
+  isolation: isolate;
+  scroll-margin-top: 4rem;
+  display: flex;
+  align-items: center;
+  padding-block: 4rem;
+  background: var(--page);
+}
+
+.home-canvas {
+  background: linear-gradient(to bottom, var(--page), var(--surface-muted) 25%, var(--surface-muted) 75%, var(--page));
+}
+
+.home-texture::before {
+  content: "";
+  position: absolute;
+  inset: 12% 0 12% 36%;
+  z-index: -1;
+  pointer-events: none;
+  background-image: radial-gradient(var(--border) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: linear-gradient(to right, transparent, black 25%, black 75%, transparent);
+}
+
+.home-event-path {
+  position: absolute;
+  inset-block: 1rem 2.5rem;
+  inset-inline-start: -2rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-inline-start: 1px solid var(--border);
+  pointer-events: none;
+}
+
+.home-event-path span {
+  width: 7px;
+  height: 7px;
+  margin-inline-start: -4px;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  background: var(--page);
+}
+
+.home-event-path span::after {
+  content: "";
+  position: absolute;
+  width: 1.75rem;
+  margin-block-start: 2px;
+  margin-inline-start: 6px;
+  border-top: 1px solid var(--border);
+}
+
+.home-product-visual {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--page);
+  box-shadow: 0 2px 4px oklch(20% 0.01 90 / 0.04), 0 24px 48px -24px oklch(20% 0.01 90 / 0.18);
+}
+
+.home-canvas-image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.home-detail {
+  background: linear-gradient(to bottom, var(--page), var(--surface-muted) 35%, var(--page));
+}
+
+@media (min-width: 1024px) {
+  .home-chapter {
+    min-height: calc(100dvh - 4rem);
+    padding-block: 3rem;
+  }
+
+  .home-canvas-image {
+    object-fit: contain;
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .home-canvas-layout {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  }
+}
+
+@media (max-width: 639px) {
+  .home-chapter {
+    padding-block: 1.25rem;
+  }
+
+  .home-texture::before {
+    inset: 35% 0 10%;
+  }
+
+  .home-event-path {
+    display: none;
+  }
+}
+
 /*
  * Design tokens — source of truth: docs/ai-showcase-design-brief-v2.md
  * Warm paper + ink typography + deep cobalt accent. Square-cornered,

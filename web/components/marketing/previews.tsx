@@ -44,7 +44,7 @@ export function ApprovalPreview({ className }: { className?: string }) {
   return (
     <PanelFrame
       title="governed-agent / approval"
-      right={<Badge variant="warning">HIGH RISK</Badge>}
+      right={<Badge variant="warning">APPROVAL REQUIRED</Badge>}
       className={className}
     >
       <div className="space-y-4 px-4 py-4">
@@ -60,21 +60,21 @@ export function ApprovalPreview({ className }: { className?: string }) {
         </div>
         <p className="flex items-start gap-2 text-[13px]/5 text-muted">
           <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-          Policy requires a human decision: refunds over 50 EUR are high risk.
+          Policy requires a human decision before this mock refund action can run.
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          <button className="h-8 rounded-control border border-line px-3 text-[13px] text-danger hover:bg-danger/5">
+          <span className="inline-flex h-8 items-center rounded-control border border-line px-3 text-[13px] text-danger">
             Reject
-          </button>
-          <button className="h-8 rounded-control border border-line px-3 text-[13px] text-ink hover:bg-surface-muted">
+          </span>
+          <span className="inline-flex h-8 items-center rounded-control border border-line px-3 text-[13px] text-ink">
             Edit arguments
-          </button>
-          <button className="h-8 rounded-control border border-line px-3 text-[13px] text-ink hover:bg-surface-muted">
+          </span>
+          <span className="inline-flex h-8 items-center rounded-control border border-line px-3 text-[13px] text-ink">
             Approve
-          </button>
+          </span>
         </div>
         <p className="font-mono text-[11px] text-muted">
-          approve is not preselected for high-risk actions · expires in 09:42
+          sample approval panel · demo data only
         </p>
       </div>
     </PanelFrame>
