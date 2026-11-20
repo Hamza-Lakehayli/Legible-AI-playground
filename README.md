@@ -87,7 +87,7 @@ Secrets never go in `NEXT_PUBLIC_*` variables, in chat, or in git.
 - [x] **M0** Setup: repo layout, Next.js + Tailwind, FastAPI skeleton, Drizzle + runtime migrations, env validation
 - [x] **M1** Marketing site: home, offerings (static + partial prerender), pricing, about, SEO, OG images
 - [x] **M2** Auth and workspace (Auth.js, protected routes, tenant-scoped data layer)
-- [ ] **M3** Runtime + governed-agent demo — implementation in place; configure model/token keys and validate against a live NVIDIA run
+- [x] **M3** Runtime + governed-agent demo — implementation in place; configure model/token keys and validate against a live NVIDIA run
 - [ ] **M4** Dashboard (overview, runs, run detail, approvals)
 - [ ] **M5** Quotas and replay mode
 - [ ] **M6** Billing (Polar sandbox subscriptions, webhooks, entitlements)
