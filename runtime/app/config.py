@@ -15,7 +15,7 @@ class Settings(BaseSettings):
 
     nvidia_api_key: str | None = None
     nvidia_base_url: str = "https://integrate.api.nvidia.com/v1"
-    nvidia_model: str = "meta/llama-3.3-70b-instruct"
+    nvidia_model: str = "nvidia/nemotron-3-ultra-550b-a55b"
     fallback_model: str | None = None
     model_request_budget_seconds: float = Field(default=60, gt=0, le=600)
 
