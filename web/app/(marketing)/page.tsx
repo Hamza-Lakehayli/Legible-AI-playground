@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PlaygroundEntryLink } from "@/components/transitions/playground-entry-link";
+import { HomepageMotion } from "@/components/marketing/homepage-motion";
 import { Container, Section } from "@/components/ui/layout";
 import {
   CanvasSection,
@@ -16,6 +17,7 @@ export default function HomePage() {
   return (
     <>
       <Section className="flex min-h-[calc(100dvh-4rem)] items-center py-16 md:py-20">
+        <HomepageMotion />
         <Container>
           <div className="mx-auto flex max-w-4xl flex-col items-center text-center">
             <h1 className="text-4xl font-semibold tracking-tight text-balance sm:text-5xl md:text-6xl">

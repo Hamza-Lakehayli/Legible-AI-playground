@@ -99,20 +99,50 @@ function nextFrame(): Promise<void> {
   return new Promise((resolve) => requestAnimationFrame(() => resolve()));
 }
 
-/** rAF-driven phase tween — the animation always finishes, whatever the user does. */
+/** rAF-driven phase tween; reduced motion resolves it immediately and cleanly. */
 function animate(
   durationMs: number,
   apply: (p: number) => void,
-): Promise<void> {
+): Promise<boolean> {
   return new Promise((resolve) => {
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
     const start = performance.now();
+    let frame = 0;
+    let finished = false;
+    let reducedInterrupt = false;
+    let onReducedMotionChange = () => {};
+    const cleanup = () => {
+      cancelAnimationFrame(frame);
+      reduced.removeEventListener("change", onReducedMotionChange);
+    };
+    const finish = (interruptedByReducedMotion = false) => {
+      if (finished) return;
+      finished = true;
+      reducedInterrupt = interruptedByReducedMotion;
+      cleanup();
+      apply(1);
+      resolve(reducedInterrupt);
+    };
+    onReducedMotionChange = () => {
+      if (reduced.matches) finish(true);
+    };
     const step = (now: number) => {
+      if (reduced.matches) {
+        finish(true);
+        return;
+      }
       const p = Math.min(1, (now - start) / durationMs);
       apply(p);
-      if (p < 1) requestAnimationFrame(step);
-      else resolve();
+      if (p < 1) frame = requestAnimationFrame(step);
+      else {
+        finished = true;
+        cleanup();
+        resolve(false);
+      }
     };
-    requestAnimationFrame(step);
+    reduced.addEventListener("change", onReducedMotionChange);
+    if (reduced.matches) finish(true);
+    else frame = requestAnimationFrame(step);
   });
 }
 
@@ -154,19 +184,35 @@ export function GlitchStage() {
     let busy = false;
     let cancelled = false;
     const owner = Symbol("marketing-glitch");
-    let scrollLock: { overflow: string; padding: string } | null = null;
+    let scrollLock: {
+      overflow: string;
+      padding: string;
+      scrollbarGutter: string;
+    } | null = null;
 
     const isReduced = () => reducedMotion();
 
     const lockScroll = () => {
-      scrollLock = { overflow: document.documentElement.style.overflow, padding: document.body.style.paddingRight };
-      const scrollbar = window.innerWidth - document.documentElement.clientWidth;
-      document.documentElement.style.overflow = "hidden";
-      if (scrollbar > 0) document.body.style.paddingRight = `${scrollbar}px`;
+      const root = document.documentElement;
+      const scrollbar = window.innerWidth - root.clientWidth;
+      const supportsStableGutter =
+        scrollbar > 0 && CSS.supports("scrollbar-gutter", "stable");
+      scrollLock = {
+        overflow: root.style.overflow,
+        padding: document.body.style.paddingRight,
+        scrollbarGutter: root.style.scrollbarGutter,
+      };
+      if (supportsStableGutter) root.style.scrollbarGutter = "stable";
+      root.style.overflow = "hidden";
+      if (!supportsStableGutter && scrollbar > 0) {
+        document.body.style.paddingRight = `${scrollbar}px`;
+      }
     };
     const unlockScroll = () => {
       if (!scrollLock) return;
-      document.documentElement.style.overflow = scrollLock.overflow;
+      const root = document.documentElement;
+      root.style.overflow = scrollLock.overflow;
+      root.style.scrollbarGutter = scrollLock.scrollbarGutter;
       document.body.style.paddingRight = scrollLock.padding;
       scrollLock = null;
       releaseTransition(owner);
@@ -193,7 +239,42 @@ export function GlitchStage() {
      * shows what the viewport shows, so tear bands always land on-screen even
      * for long sections.
      */
-    const buildWrap = (source: HTMLElement): CloneWrap => {
+    const removeDecorativeClones = (clone: HTMLElement) => {
+      clone
+        .querySelectorAll("[data-home-backdrop], [data-home-motion-control]")
+        .forEach((element) => element.remove());
+    };
+
+    const prepareCubeSceneClone = (source: HTMLElement, clone: HTMLElement) => {
+      clone.removeAttribute("data-home-backdrop");
+      clone.removeAttribute("data-home-motion-state");
+      clone.removeAttribute("data-space-state");
+      clone.removeAttribute("data-cubes-paused");
+      clone.classList.add("glitch-stage-cube-scene");
+      clone.style.position = "absolute";
+      clone.style.inset = "0";
+      clone.style.zIndex = "auto";
+
+      const sourceMotionNodes = source.querySelectorAll<HTMLElement>(
+        ".home-space-cube__drift, .home-space-cube__body",
+      );
+      const cloneMotionNodes = clone.querySelectorAll<HTMLElement>(
+        ".home-space-cube__drift, .home-space-cube__body",
+      );
+      sourceMotionNodes.forEach((sourceNode, index) => {
+        const cloneNode = cloneMotionNodes[index];
+        if (!cloneNode) return;
+        const computed = window.getComputedStyle(sourceNode);
+        cloneNode.style.animation = "none";
+        cloneNode.style.transform = computed.transform;
+        cloneNode.style.transformOrigin = computed.transformOrigin;
+      });
+    };
+
+    const buildWrap = (
+      source: HTMLElement,
+      cubeBackdrop = false,
+    ): CloneWrap => {
       const rect = source.getBoundingClientRect();
       const offset = Math.max(0, Math.round(-rect.top));
       const height = Math.max(
@@ -203,6 +284,7 @@ export function GlitchStage() {
 
       const root = document.createElement("div");
       root.className = "glitch-stage-clone";
+      if (cubeBackdrop) root.classList.add("glitch-stage-cube-wrap");
       root.style.top = `${Math.max(0, Math.round(rect.top))}px`;
       root.style.height = `${height}px`;
       root.style.overflow = "hidden";
@@ -212,6 +294,8 @@ export function GlitchStage() {
       base.style.marginTop = `${-offset}px`;
       base.setAttribute("inert", "");
       base.setAttribute("aria-hidden", "true");
+      if (cubeBackdrop) prepareCubeSceneClone(source, base);
+      else removeDecorativeClones(base);
       root.appendChild(base);
 
       /* Residue frames are cloned BEFORE the headline is swapped, so bands
@@ -225,6 +309,8 @@ export function GlitchStage() {
         clone.style.height = `${Math.round(rect.height)}px`;
         clone.setAttribute("inert", "");
         clone.setAttribute("aria-hidden", "true");
+        if (cubeBackdrop) prepareCubeSceneClone(source, clone);
+        else removeDecorativeClones(clone);
         root.appendChild(clone);
         return clone;
       });
@@ -274,15 +360,26 @@ export function GlitchStage() {
       const blocks = Array.from(
         document.querySelectorAll<HTMLElement>("main > *"),
       );
+      const cubeBackdrop = document.querySelector<HTMLElement>(
+        "main > section [data-home-backdrop]",
+      );
       const footer = document.querySelector<HTMLElement>("footer");
       const all = footer ? [...blocks, footer] : blocks;
-      return all
+      const wraps = all
         .filter((el) => {
           if (el.tagName === "SCRIPT" || el.tagName === "STYLE") return false;
           const rect = el.getBoundingClientRect();
           return rect.height > 0 && rect.bottom > 0 && rect.top < vh;
         })
         .map((el) => buildWrap(el));
+      if (
+        cubeBackdrop?.isConnected &&
+        cubeBackdrop.getClientRects().length > 0 &&
+        getComputedStyle(cubeBackdrop).visibility !== "hidden"
+      ) {
+        wraps.unshift(buildWrap(cubeBackdrop, true));
+      }
+      return wraps;
     };
 
     const buildChrome = () => {
@@ -356,19 +453,34 @@ export function GlitchStage() {
 
     /* ---------- navigation transitions ---------- */
 
-    const waitForPath = (href: string): Promise<void> => {
+    const waitForPath = (
+      href: string,
+      onReducedMotion: () => void,
+    ): Promise<void> => {
       const target = href.split("?")[0].split("#")[0];
       if (window.location.pathname === target) return Promise.resolve();
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+      if (reduced.matches) {
+        onReducedMotion();
+        return Promise.resolve();
+      }
       return new Promise((resolve) => {
-        const timer = window.setTimeout(() => {
-          pathWaiters.current = pathWaiters.current.filter((fn) => fn !== done);
-          resolve();
-        }, NAV_TIMEOUT_MS);
+        let timer = 0;
         const done = () => {
           window.clearTimeout(timer);
+          reduced.removeEventListener("change", onReducedMotionChange);
+          pathWaiters.current = pathWaiters.current.filter((fn) => fn !== done);
           resolve();
         };
+        const onReducedMotionChange = () => {
+          if (reduced.matches) {
+            onReducedMotion();
+            done();
+          }
+        };
+        timer = window.setTimeout(done, NAV_TIMEOUT_MS);
         pathWaiters.current.push(done);
+        reduced.addEventListener("change", onReducedMotionChange);
       });
     };
 
@@ -383,16 +495,31 @@ export function GlitchStage() {
       buildChrome();
 
       /* EXIT — tear the current screen down into chaos. */
-      await animate(EXIT_MS, (p) => {
+      let reducedDuringTransition = await animate(EXIT_MS, (p) => {
         backdrop.style.opacity = String(Math.min(1, p * 5));
         wraps.forEach((wrap) => applyTear(wrap, "exit", p));
       });
       if (cancelled) return;
 
+      /* If motion was reduced during exit, continue with a plain route change. */
+      if (reducedDuringTransition || isReduced()) {
+        routerRef.current.push(href);
+        clearStage();
+        unlockScroll();
+        busy = false;
+        return;
+      }
+
       /* Teleport behind the chaos (opaque backdrop + full-intensity tear). */
       routerRef.current.push(href);
-      await waitForPath(href);
+      await waitForPath(href, () => { reducedDuringTransition = true; });
       if (cancelled) return;
+      if (reducedDuringTransition || isReduced()) {
+        clearStage();
+        unlockScroll();
+        busy = false;
+        return;
+      }
       window.scrollTo({ top: 0, behavior: "instant" });
 
       /* ENTER — the destination assembles out of the chaos and resolves. */
