@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { ArrowUpRight } from "lucide-react";
 import { ApprovalPreview } from "@/components/marketing/previews";
 import { ConsolePreview } from "@/components/marketing/console-preview";
 import { PlaygroundEntryLink } from "@/components/transitions/playground-entry-link";
@@ -185,19 +186,27 @@ export function TraceSection() {
 
 export function ClosingCta() {
   return (
-    <Section className="bg-page py-16 md:py-24" data-home-backdrop-end>
+    <Section className="py-6 md:py-10" data-home-backdrop-end>
       <Container className="max-w-7xl">
-        <div className="flex flex-col items-start justify-between gap-8 border-t border-line pt-12 md:flex-row md:items-center">
-          <div className="max-w-xl">
-            <h2 className="text-3xl font-semibold tracking-tight text-balance md:text-4xl">
+        <div
+          className="home-sheet grid gap-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"
+          data-home-reveal="left"
+        >
+          <div className="max-w-2xl">
+            <p className="text-sm font-medium text-accent-ink">Next step</p>
+            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-balance md:text-3xl">
               Build a workflow you can understand.
             </h2>
-            <p className="mt-4 max-w-xl text-base/7 text-muted">
+            <p className="mt-3 max-w-xl text-base/7 text-muted">
               Open the canvas to explore its nodes, policies, and sample workflow.
             </p>
           </div>
-          <PlaygroundEntryLink variant="primary" className="min-h-12 shrink-0 px-7">
+          <PlaygroundEntryLink
+            variant="primary"
+            className="min-h-12 w-full shrink-0 justify-between px-4 sm:w-auto sm:min-w-44"
+          >
             Open Playground
+            <ArrowUpRight className="size-4" aria-hidden="true" />
           </PlaygroundEntryLink>
         </div>
       </Container>

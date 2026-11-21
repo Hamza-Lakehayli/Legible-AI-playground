@@ -11,6 +11,67 @@
   background: transparent;
 }
 
+.mobile-nav-dialog {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.mobile-nav-dialog::backdrop {
+  background: oklch(16% 0.015 255 / 0.5);
+  backdrop-filter: blur(3px);
+}
+
+.mobile-nav-sheet {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+  max-height: min(88dvh, 44rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 1.25rem calc(1.25rem + env(safe-area-inset-bottom));
+  border: 1px solid var(--border);
+  border-bottom: 0;
+  border-radius: 16px 16px 0 0;
+  background: var(--page);
+  box-shadow: 0 -24px 64px -32px oklch(15% 0.02 250 / 0.5);
+  touch-action: pan-y;
+}
+
+.mobile-nav-handle {
+  width: 2.5rem;
+  height: 3px;
+  margin: 0.75rem auto 1.25rem;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mobile-nav-dialog[open] .mobile-nav-sheet {
+    animation: mobile-nav-sheet-enter 180ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+  }
+
+  @keyframes mobile-nav-sheet-enter {
+    from {
+      opacity: 0.7;
+      transform: translateY(1rem);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
 main:has(.home-canvas) {
   position: relative;
   isolation: isolate;
