@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { commitHistory, createHistory, HISTORY_LIMIT, redoHistory, undoHistory } from "../lib/builder/history";
+import { commitHistory, createHistory, HISTORY_LIMIT, redoHistory, resetHistory, undoHistory } from "../lib/builder/history";
 import { duplicateNode, hasMeaningfulWork } from "../lib/builder/editing";
 import { createWorkflowTemplate, TEMPLATE_WORKFLOW } from "../lib/builder/templates";
 import { validateWorkflow, validateWorkflowDetails, workflowSchema } from "../lib/builder/schema";
@@ -34,6 +34,21 @@ describe("graph history", () => {
     h = commitHistory(h, "original", "focus-1");
     expect(h.past).toEqual([]);
     expect(h.present).toBe("original");
+  });
+
+  it("starts a clean history when switching workflow documents", () => {
+    const current = structuredClone(TEMPLATE_WORKFLOW);
+    const edited = { ...current, name: "Edited" };
+    const next = createWorkflowTemplate("blank");
+    const history = commitHistory(createHistory(current), edited);
+
+    const switched = resetHistory(next);
+    expect(switched.present).toBe(next);
+    expect(switched.past).toEqual([]);
+    expect(switched.future).toEqual([]);
+    expect(undoHistory(switched)).toBe(switched);
+    expect(redoHistory(switched)).toBe(switched);
+    expect(history.present).toBe(edited);
   });
 
   it("restores graph structure, drag-end positions, labels, imports and template replacement", () => {

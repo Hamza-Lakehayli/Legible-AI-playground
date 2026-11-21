@@ -4,6 +4,9 @@ export const HISTORY_LIMIT = 50;
 export function createHistory<T>(present: T): History<T> {
   return { past: [], present, future: [] };
 }
+export function resetHistory<T>(present: T): History<T> {
+  return createHistory(present);
+}
 export function commitHistory<T>(history: History<T>, next: T, group?: string): History<T> {
   if (JSON.stringify(next) === JSON.stringify(history.present)) return history;
   if (group && group === history.group && JSON.stringify(next) === JSON.stringify(history.past.at(-1))) {

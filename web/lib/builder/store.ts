@@ -16,6 +16,8 @@ import { TEMPLATE_WORKFLOW } from "./templates";
 
 const GRAPHS_KEY = "legible.builder.graphs.v2";
 const GRAPH_DRAFT_KEY = "legible.builder.graph-draft.v2";
+const GRAPHS_CHANGE_EVENT = "legible:builder-graphs-change";
+const EMPTY_WORKFLOWS: WorkflowSpec[] = [];
 
 function readRaw(key: string): string | null {
   if (typeof window === "undefined") return null;
@@ -26,12 +28,13 @@ function readRaw(key: string): string | null {
   }
 }
 
-function writeJson(key: string, value: unknown): void {
-  if (typeof window === "undefined") return;
+function writeJson(key: string, value: unknown): boolean {
+  if (typeof window === "undefined") return false;
   try {
     window.localStorage.setItem(key, JSON.stringify(value));
+    return true;
   } catch {
-    // Quota or private mode: the in-memory session still works.
+    return false;
   }
 }
 
@@ -59,17 +62,50 @@ export function subscribeDrafts(): () => void {
 
 let graphsCache: { raw: string | null; value: WorkflowSpec[] } | null = null;
 
-export function loadGraphs(): WorkflowSpec[] {
+export function loadSavedGraphs(): WorkflowSpec[] {
   const raw = readRaw(GRAPHS_KEY);
   if (graphsCache && graphsCache.raw === raw) return graphsCache.value;
-  const stored = parseGraphs(parseJson(raw));
-  const value = stored.length ? stored : [TEMPLATE_WORKFLOW];
+  const value = parseGraphs(parseJson(raw));
   graphsCache = { raw, value };
   return value;
 }
 
-export function saveGraphs(graphs: WorkflowSpec[]): void {
-  writeJson(GRAPHS_KEY, graphs);
+/** Compatibility fallback for callers that need a runnable initial example. */
+export function loadGraphs(): WorkflowSpec[] {
+  const saved = loadSavedGraphs();
+  return saved.length ? saved : [TEMPLATE_WORKFLOW];
+}
+
+export function subscribeSavedGraphs(onChange: () => void): () => void {
+  if (typeof window === "undefined") return () => {};
+
+  const onStorage = (event: StorageEvent) => {
+    if (event.key !== GRAPHS_KEY && event.key !== null) return;
+    graphsCache = null;
+    onChange();
+  };
+  window.addEventListener(GRAPHS_CHANGE_EVENT, onChange);
+  window.addEventListener("storage", onStorage);
+  return () => {
+    window.removeEventListener(GRAPHS_CHANGE_EVENT, onChange);
+    window.removeEventListener("storage", onStorage);
+  };
+}
+
+export function getSavedGraphsSnapshot(): WorkflowSpec[] {
+  return loadSavedGraphs();
+}
+
+export function getServerSavedGraphsSnapshot(): WorkflowSpec[] {
+  return EMPTY_WORKFLOWS;
+}
+
+export function saveGraphs(graphs: WorkflowSpec[]): boolean {
+  if (!writeJson(GRAPHS_KEY, graphs)) return false;
+  const raw = JSON.stringify(graphs);
+  graphsCache = { raw, value: graphs };
+  window.dispatchEvent(new Event(GRAPHS_CHANGE_EVENT));
+  return true;
 }
 
 let graphDraftCache: { raw: string | null; value: WorkflowSpec | null } | null =
@@ -88,8 +124,10 @@ export function getServerGraphDraftSnapshot(): WorkflowSpec | null {
   return null;
 }
 
-export function saveGraphDraft(graph: WorkflowSpec): void {
-  writeJson(GRAPH_DRAFT_KEY, graph);
+export function saveGraphDraft(graph: WorkflowSpec): boolean {
+  if (!writeJson(GRAPH_DRAFT_KEY, graph)) return false;
+  graphDraftCache = { raw: JSON.stringify(graph), value: graph };
+  return true;
 }
 
 export function exportBundle(graphs: WorkflowSpec[]): string {

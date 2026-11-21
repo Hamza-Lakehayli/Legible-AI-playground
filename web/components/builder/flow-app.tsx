@@ -47,25 +47,30 @@ import {
   type WorkflowSpec,
   TOOL_EXAMPLE_ARGUMENTS,
 } from "@/lib/builder/schema";
-import { createWorkflowTemplate, DEFAULT_WORKFLOW_INPUT, TEMPLATE_WORKFLOW, type TemplateId } from "@/lib/builder/templates";
+import { createWorkflowTemplate, DEFAULT_WORKFLOW_INPUT, TEMPLATE_WORKFLOW } from "@/lib/builder/templates";
 import {
   downloadBundle,
   exportBundle,
+  getSavedGraphsSnapshot,
+  getServerSavedGraphsSnapshot,
   getGraphDraftSnapshot,
   getServerGraphDraftSnapshot,
   importBundle,
-  loadGraphs,
+  loadSavedGraphs,
   saveGraphDraft,
   saveGraphs,
+  subscribeSavedGraphs,
   subscribeDrafts,
 } from "@/lib/builder/store";
+import { persistWorkflowTransition, renameWorkflow, resolveWorkflowById } from "@/lib/builder/workflow-actions";
 import { BuilderNodeCard, type BuilderNodeData } from "./flow/nodes";
 import { BuilderEdge, type BuilderEdgeData } from "./flow/edge";
 import { NodePicker } from "./flow/node-picker";
 import { NodeInspector } from "./flow/inspector";
 import { RunDock } from "./flow/run-dock";
+import { WorkflowSwitcher } from "./workflow-switcher";
 import { useGraphHistory } from "./use-graph-history";
-import { duplicateNode, hasMeaningfulWork } from "@/lib/builder/editing";
+import { duplicateNode } from "@/lib/builder/editing";
 import { usePlaygroundEntry } from "@/components/transitions/playground-entry-provider";
 
 type FlowNode = Node<BuilderNodeData>;
@@ -134,7 +139,12 @@ function FlowAppInner() {
     getServerGraphDraftSnapshot,
   );
   const history = useGraphHistory(draftGraph ?? TEMPLATE_WORKFLOW);
-  const { graph, setGraph } = history;
+  const { graph, setGraph, resetGraph } = history;
+  const savedWorkflows = useSyncExternalStore(
+    subscribeSavedGraphs,
+    getSavedGraphsSnapshot,
+    getServerSavedGraphsSnapshot,
+  );
   const { signalReady, requestId } = usePlaygroundEntry();
   const nodesInitialized = useNodesInitialized();
   const draftResolved = useSyncExternalStore(subscribeHydration, getHydratedSnapshot, getServerHydrationSnapshot);
@@ -146,6 +156,8 @@ function FlowAppInner() {
   const [outlineOpen, setOutlineOpen] = useState(false);
   const [runInput, setRunInput] = useState(DEFAULT_WORKFLOW_INPUT);
   const [notice, setNotice] = useState<string | null>(null);
+  const [storageError, setStorageError] = useState<string | null>(null);
+  const [draftStorageError, setDraftStorageError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [savedGraph, setSavedGraph] = useState<WorkflowSpec | null>(null);
 
@@ -160,8 +172,6 @@ function FlowAppInner() {
   // Track RF's dimensions events as well as its aggregate hook. This controlled
   // canvas intentionally merges those dimension changes into an identity cache
   // instead of replacing the graph spec, so the local readiness proof matters.
-  const allNodesMeasured = graph.nodes.every((node) => measuredNodeIds.current.has(node.id));
-
   const fittedDraft = useRef(false);
   useEffect(() => {
     if (!draftGraph || fittedDraft.current) return;
@@ -173,6 +183,7 @@ function FlowAppInner() {
   }, [draftGraph, fitView]);
 
   useEffect(() => {
+    const allNodesMeasured = graph.nodes.every((node) => measuredNodeIds.current.has(node.id));
     if (!requestId || !draftResolved || !viewportInitialized || (graph.nodes.length > 0 && !nodesInitialized && !allNodesMeasured)) return;
     let firstFrame = 0;
     let secondFrame = 0;
@@ -205,10 +216,16 @@ function FlowAppInner() {
       cancelAnimationFrame(secondFrame);
       observer?.disconnect();
     };
-  }, [requestId, draftResolved, viewportInitialized, nodesInitialized, allNodesMeasured, measurementVersion, graph.nodes.length, signalReady]);
+  }, [requestId, draftResolved, viewportInitialized, nodesInitialized, measurementVersion, graph.nodes, signalReady]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => saveGraphDraft(graph), 500);
+    const timer = window.setTimeout(() => {
+      if (saveGraphDraft(graph)) {
+        setDraftStorageError(null);
+      } else {
+        setDraftStorageError("This workflow draft could not be saved in this browser. Check browser storage and try again.");
+      }
+    }, 500);
     return () => window.clearTimeout(timer);
   }, [graph]);
 
@@ -256,7 +273,7 @@ function FlowAppInner() {
     (edgeId: string, clientX: number, clientY: number) => {
       setPicker({ x: clientX, y: clientY, edgeId });
     },
-    [],
+    [setPicker],
   );
 
   const updateEdgeLabel = useCallback(
@@ -267,7 +284,7 @@ function FlowAppInner() {
       }));
       setSaved(false);
     },
-    [setGraph],
+    [setGraph, setSaved],
   );
 
   const flowEdges = useMemo<FlowEdge[]>(
@@ -467,7 +484,7 @@ function FlowAppInner() {
       setPicker(null);
       setSaved(false);
     },
-    [setGraph],
+    [setGraph, setSaved, setSelection, setPicker],
   );
 
   const insertOnEdge = useCallback(
@@ -527,7 +544,7 @@ function FlowAppInner() {
       }));
       setSaved(false);
     },
-    [setGraph],
+    [setGraph, setSaved],
   );
 
   const updateNodeConfig = useCallback(
@@ -547,7 +564,7 @@ function FlowAppInner() {
       }));
       setSaved(false);
     },
-    [setGraph],
+    [setGraph, setSaved],
   );
 
   /** The agent config card lives inside the node, so patches merge into it. */
@@ -569,7 +586,7 @@ function FlowAppInner() {
       }));
       setSaved(false);
     },
-    [setGraph],
+    [setGraph, setSaved],
   );
 
   const deleteSelection = useCallback(() => {
@@ -590,7 +607,7 @@ function FlowAppInner() {
           },
     );
     setSelection(null);
-  }, [selection, setGraph]);
+  }, [selection, setGraph, setSelection]);
 
   const session = useRunSession((input) => ({
     kind: "workflow",
@@ -599,12 +616,83 @@ function FlowAppInner() {
     agents: collectAgents(graph),
   }));
 
+  function resetCanvasForWorkflow(next: WorkflowSpec) {
+    resetGraph(next);
+    setSelection(null);
+    setPicker(null);
+    setDragPositions(new Map());
+    setSaved(false);
+    setSavedGraph(null);
+    window.requestAnimationFrame(() => {
+      void fitView({ padding: 0.28 });
+    });
+  }
+
+  function transitionToWorkflow(next: WorkflowSpec): boolean {
+    if (next.id === graph.id) return true;
+    if (session.runActive) {
+      setNotice("Finish or resolve the active run before switching workflows.");
+      return false;
+    }
+    const result = persistWorkflowTransition(
+      graph,
+      next,
+      loadSavedGraphs(),
+      saveGraphs,
+      saveGraphDraft,
+    );
+    if (!result.ok) {
+      setStorageError(
+        result.reason === "workflows"
+          ? "This workflow could not be saved in this browser. Your current workflow is still open."
+          : "The selected workflow could not be made active. Your current workflow is still open.",
+      );
+      return false;
+    }
+
+    setStorageError(null);
+    setDraftStorageError(null);
+    setNotice("Current workflow saved on this browser.");
+    resetCanvasForWorkflow(next);
+    return true;
+  }
+
+  function createWorkflow(template: "blank" | "refund"): boolean {
+    return transitionToWorkflow(createWorkflowTemplate(template));
+  }
+
+  function onSelectWorkflow(workflow: WorkflowSpec): boolean {
+    const latest = resolveWorkflowById(workflow.id, graph, loadSavedGraphs());
+    if (!latest) {
+      setNotice("That workflow is no longer available. Refresh the workflow list and try again.");
+      return false;
+    }
+    return transitionToWorkflow(latest);
+  }
+
+  function onRenameWorkflow(name: string): boolean {
+    const renamed = renameWorkflow(graph, name);
+    if (!renamed) return false;
+    setGraph(renamed);
+    setSaved(false);
+    setSavedGraph(null);
+    setStorageError(null);
+    setDraftStorageError(null);
+    setNotice("Workflow name updated.");
+    return true;
+  }
+
   function save() {
     const next = [
-      ...loadGraphs().filter((item) => item.id !== graph.id),
+      ...loadSavedGraphs().filter((item) => item.id !== graph.id),
       { ...graph, updatedAt: new Date().toISOString() },
     ];
-    saveGraphs(next);
+    if (!saveGraphs(next)) {
+      setStorageError("This workflow could not be saved in this browser. Check browser storage and try again.");
+      return;
+    }
+    setStorageError(null);
+    setDraftStorageError(null);
     setSavedGraph(graph);
     setSaved(true);
     setNotice("Workflow saved in this browser. Export to keep a copy outside it.");
@@ -612,7 +700,7 @@ function FlowAppInner() {
 
   function onExport() {
     const graphs = [
-      ...loadGraphs().filter((item) => item.id !== graph.id),
+      ...loadSavedGraphs().filter((item) => item.id !== graph.id),
       graph,
     ];
     downloadBundle(exportBundle(graphs));
@@ -624,7 +712,9 @@ function FlowAppInner() {
     event.target.value = "";
     if (!file) return;
     const text = await file.text();
-    const result = importBundle(text, { graphs: loadGraphs() });
+    const result = importBundle(text, {
+      graphs: [...loadSavedGraphs().filter((item) => item.id !== graph.id), graph],
+    });
     if (!result.ok) {
       setNotice(result.error);
       return;
@@ -632,25 +722,36 @@ function FlowAppInner() {
     const imported = importBundle(text, { graphs: [] });
     if (!imported.ok || !imported.graphs.length) return;
     const incoming = imported.graphs[0];
-    const selected = result.graphs.find((item) => item.id === incoming.id) ?? incoming;
-    if (!replaceGraph(selected)) return;
-    saveGraphs(result.graphs);
+    const selected = incoming.id === graph.id
+      ? graph
+      : result.graphs.find((item) => item.id === incoming.id) ?? incoming;
+    if (selected.id !== graph.id && session.runActive) {
+      setNotice("Finish or resolve the active run before importing a different workflow.");
+      return;
+    }
+    const transition = persistWorkflowTransition(
+      graph,
+      selected,
+      result.graphs,
+      saveGraphs,
+      saveGraphDraft,
+    );
+    if (!transition.ok) {
+      setStorageError(
+        transition.reason === "workflows"
+          ? "The bundle could not be imported because browser storage is unavailable. Your current workflow is unchanged."
+          : "The imported workflow could not be made active. Your current workflow is still open.",
+      );
+      return;
+    }
+    setStorageError(null);
+    setDraftStorageError(null);
+    if (selected.id !== graph.id) resetCanvasForWorkflow(selected);
     setNotice(
       `Imported ${result.added} workflow${result.added === 1 ? "" : "s"}${
         result.skipped ? ` · kept ${result.skipped} existing` : ""
       }.`,
     );
-  }
-
-  function replaceGraph(next: WorkflowSpec) {
-    if (hasMeaningfulWork(graph) && !window.confirm("Replace the current workflow? Local autosave is not a backup. You can undo this replacement or export a copy first.")) return false;
-    setGraph(next);
-    setSelection(null);
-    setPicker(null);
-    setDragPositions(new Map());
-    setSaved(false);
-    window.requestAnimationFrame(() => { void fitView({ padding: 0.28 }); });
-    return true;
   }
 
   function openPalette(event: ReactMouseEvent<HTMLButtonElement>) {
@@ -687,7 +788,7 @@ function FlowAppInner() {
 
   return (
     <main id="playground-main" tabIndex={-1} aria-label="Workflow playground" className="flex h-dvh min-h-0 flex-col overflow-hidden bg-page outline-none" onFocusCapture={history.onFocusCapture} onBlurCapture={history.onBlurCapture}>
-      <header className="z-10 flex min-h-14 shrink-0 flex-wrap items-center gap-2.5 border-b border-line bg-surface px-3 py-2">
+      <header className="z-[60] flex min-h-14 shrink-0 flex-wrap items-center gap-2.5 border-b border-line bg-surface px-3 py-2">
         <Link
           href="/"
           className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-[4px] px-2 text-[13px] font-medium text-ink transition-colors hover:bg-surface-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent"
@@ -696,21 +797,20 @@ function FlowAppInner() {
           Back to site
         </Link>
         <span className="h-5 w-px bg-line" aria-hidden />
-        <label htmlFor="workflow-name" className="sr-only">
-          Workflow name
-        </label>
-        <input
-          id="workflow-name"
-          value={graph.name}
-          placeholder="Untitled workflow"
-          maxLength={80}
-          onChange={(event) => {
-            setGraph((current) => ({ ...current, name: event.target.value }));
-            setSaved(false);
-          }}
-          className="min-w-24 flex-1 bg-transparent text-sm font-semibold text-ink placeholder:text-muted/70 focus:outline-none"
+        <WorkflowSwitcher
+          current={graph}
+          savedWorkflows={savedWorkflows}
+          disabled={session.runActive}
+          onSelect={onSelectWorkflow}
+          onCreateFromTemplate={() => createWorkflow("refund")}
+          onRename={onRenameWorkflow}
         />
         {saved && savedGraph === graph ? <Badge variant="success">Saved</Badge> : null}
+        {storageError || draftStorageError ? (
+          <p role="alert" className="max-w-56 text-xs text-danger">
+            {storageError ?? draftStorageError}
+          </p>
+        ) : null}
         {notice ? (
           <p
             role="status"
@@ -720,13 +820,18 @@ function FlowAppInner() {
           </p>
         ) : null}
         <span className="ml-auto flex shrink-0 items-center gap-0.5">
-          <select aria-label="New workflow from template" value="" className="h-8 max-w-28 rounded-control border border-line bg-surface px-1 text-xs text-ink" onChange={(event) => {
-            if (event.target.value) replaceGraph(createWorkflowTemplate(event.target.value as TemplateId));
-          }}>
-            <option value="" disabled>+ New</option>
-            <option value="blank">Blank workflow</option>
-            <option value="refund">Refund approval loop</option>
-          </select>
+          <Button
+            variant="secondary"
+            size="sm"
+            className="min-h-11 shrink-0 px-2.5 sm:px-3"
+            disabled={session.runActive}
+            onClick={() => createWorkflow("blank")}
+            aria-label="New workflow"
+            title="New workflow"
+          >
+            <Plus className="size-3.5" aria-hidden="true" />
+            <span>New workflow</span>
+          </Button>
           <Button variant="ghost" size="sm" className="w-8 px-0" onClick={history.undo} disabled={!history.canUndo} title="Undo (Ctrl/Cmd+Z)">
             <Undo2 className="size-3.5" aria-hidden /><span className="sr-only">Undo</span>
           </Button>

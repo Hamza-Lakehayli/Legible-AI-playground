@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type FocusEvent } from "react";
-import { commitHistory, createHistory, redoHistory, undoHistory, type History } from "@/lib/builder/history";
+import { commitHistory, createHistory, redoHistory, resetHistory, undoHistory, type History } from "@/lib/builder/history";
 import type { WorkflowSpec } from "@/lib/builder/schema";
 
 type Updater = WorkflowSpec | ((current: WorkflowSpec) => WorkflowSpec);
@@ -27,6 +27,12 @@ export function useGraphHistory(initial: WorkflowSpec) {
     editGroup.current = undefined;
     setHistory((current) => current && undoHistory(current));
   }, []);
+  const resetGraph = useCallback((next: WorkflowSpec) => {
+    editGroup.current = undefined;
+    editingTarget.current = null;
+    baseRef.current = next;
+    setHistory(resetHistory(next));
+  }, []);
   const redo = useCallback(() => {
     editGroup.current = undefined;
     setHistory((current) => current && redoHistory(current));
@@ -51,5 +57,5 @@ export function useGraphHistory(initial: WorkflowSpec) {
     return () => window.removeEventListener("keydown", onKey);
   }, [undo, redo]);
 
-  return { graph, setGraph, undo, redo, canUndo: Boolean(history?.past.length), canRedo: Boolean(history?.future.length), onFocusCapture, onBlurCapture };
+  return { graph, setGraph, resetGraph, undo, redo, canUndo: Boolean(history?.past.length), canRedo: Boolean(history?.future.length), onFocusCapture, onBlurCapture };
 }
